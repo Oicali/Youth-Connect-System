@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(0.98 0.02 95);      /* warm cream, light mode */
+  --foreground: oklch(0.2 0.02 90);       /* near-black text */
+  --primary: oklch(0.75 0.15 75);         /* your gold */
+  --primary-foreground: oklch(0.15 0.02 90);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 90);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 90);
+  --border: oklch(0.88 0.02 90);
+  --destructive: oklch(0.55 0.22 25);
+  --muted: oklch(0.95 0.02 90);
+  --muted-foreground: oklch(0.45 0.02 90);
+  --radius: 0.6rem;
+}
+
+.dark {
+  --background: oklch(0.18 0.01 150);     /* charcoal-black like your logo bg */
+  --foreground: oklch(0.96 0.03 95);      /* cream text */
+  --primary: oklch(0.75 0.15 75);         /* same gold */
+  --primary-foreground: oklch(0.15 0.02 90);
+  --card: oklch(0.22 0.01 150);
+  --card-foreground: oklch(0.96 0.03 95);
+  --popover: oklch(0.22 0.01 150);
+  --popover-foreground: oklch(0.96 0.03 95);
+  --border: oklch(0.3 0.01 150);
+  --destructive: oklch(0.6 0.22 25);
+  --muted: oklch(0.25 0.01 150);
+  --muted-foreground: oklch(0.7 0.02 90);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --radius-md: var(--radius);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--background) inset;
+  -webkit-text-fill-color: var(--foreground);
+  transition: background-color 9999s ease-in-out 0s;
+}
