@@ -3,34 +3,70 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: oklch(0.98 0.02 95);      /* warm cream, light mode */
-  --foreground: oklch(0.2 0.02 90);       /* near-black text */
-  --primary: oklch(0.75 0.15 75);         /* your gold */
-  --primary-foreground: oklch(0.15 0.02 90);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 90);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 90);
-  --border: oklch(0.88 0.02 90);
-  --destructive: oklch(0.55 0.22 25);
+  --background: oklch(0.98 0.015 95);
+  --card: oklch(0.995 0.012 95);
+  --popover: oklch(0.995 0.012 95);
   --muted: oklch(0.95 0.02 90);
-  --muted-foreground: oklch(0.45 0.02 90);
+  --border: oklch(0.88 0.02 90);
+  --input: oklch(0.83 0.02 90);
+
+  --foreground: oklch(0.22 0.02 55);        /* matched to the logo's ink, slightly warmer/browner than neutral black */
+  --card-foreground: oklch(0.22 0.02 55);
+  --popover-foreground: oklch(0.22 0.02 55);
+  --muted-foreground: oklch(0.45 0.02 60);
+
+  /* Gold, grounded in the real gradient: deep amber → bright gold */
+  --primary: oklch(0.76 0.16 74);           /* bright gold — flat UI use: buttons, active states */
+  --primary-deep: oklch(0.63 0.17 58);      /* deep amber — gradient stop, hover/active shifts toward this */
+  --primary-hover: oklch(0.71 0.165 66);    /* interpolated between the two, not just darker */
+  --primary-active: oklch(0.66 0.17 60);
+  --primary-foreground: oklch(0.16 0.02 60);
+
+  --secondary: oklch(0.93 0.02 90);
+  --secondary-foreground: oklch(0.32 0.02 90);
+
+  --success: oklch(0.62 0.14 150);
+  --success-foreground: oklch(0.98 0.02 150);
+
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.02 25);
+
+  --ring: oklch(0.71 0.16 66);
+
+  --gradient-primary: linear-gradient(180deg, var(--primary-deep), var(--primary));
+
   --radius: 0.6rem;
 }
 
 .dark {
-  --background: oklch(0.18 0.01 150);     /* charcoal-black like your logo bg */
-  --foreground: oklch(0.96 0.03 95);      /* cream text */
-  --primary: oklch(0.75 0.15 75);         /* same gold */
-  --primary-foreground: oklch(0.15 0.02 90);
-  --card: oklch(0.22 0.01 150);
-  --card-foreground: oklch(0.96 0.03 95);
-  --popover: oklch(0.22 0.01 150);
-  --popover-foreground: oklch(0.96 0.03 95);
-  --border: oklch(0.3 0.01 150);
-  --destructive: oklch(0.6 0.22 25);
-  --muted: oklch(0.25 0.01 150);
-  --muted-foreground: oklch(0.7 0.02 90);
+  --background: oklch(0.16 0.015 95);
+  --card: oklch(0.205 0.015 95);
+  --popover: oklch(0.205 0.015 95);
+  --muted: oklch(0.24 0.015 95);
+  --border: oklch(0.3 0.015 95);
+  --input: oklch(0.34 0.015 95);
+
+  --foreground: oklch(0.96 0.02 90);
+  --card-foreground: oklch(0.96 0.02 90);
+  --popover-foreground: oklch(0.96 0.02 90);
+  --muted-foreground: oklch(0.68 0.02 90);
+
+  --primary: oklch(0.76 0.16 74);
+  --primary-deep: oklch(0.63 0.17 58);
+  --primary-hover: oklch(0.8 0.15 76);
+  --primary-active: oklch(0.85 0.13 78);
+  --primary-foreground: oklch(0.16 0.02 60);
+
+  --secondary: oklch(0.3 0.015 95);
+  --secondary-foreground: oklch(0.9 0.02 90);
+
+  --success: oklch(0.68 0.14 150);
+  --success-foreground: oklch(0.12 0.03 150);
+
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0.02 25);
+
+  --ring: oklch(0.76 0.16 74);
 }
 
 @layer base {
@@ -43,22 +79,34 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --radius-md: var(--radius);
+   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
 }
 
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px var(--background) inset;
-  -webkit-text-fill-color: var(--foreground);
+input:-webkit-autofill:focus,
+input:disabled:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px var(--card) inset;
+  -webkit-text-fill-color: var(--card-foreground);
   transition: background-color 9999s ease-in-out 0s;
 }

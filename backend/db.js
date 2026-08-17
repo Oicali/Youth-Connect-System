@@ -1,8 +1,7 @@
-const { Pool } = require("pg");
+const { Pool, types } = require("pg");
 require("dotenv").config();
 
-const masked = process.env.DATABASE_URL?.replace(/:[^:@]+@/, ":****@");
-console.log("DATABASE_URL:", masked);
+types.setTypeParser(1082, (val) => val); // 1082 = Postgres DATE oid — keep as raw "yyyy-MM-dd" string, not a JS Date
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

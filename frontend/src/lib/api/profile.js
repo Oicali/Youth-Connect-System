@@ -1,3 +1,5 @@
+// frontend\src\lib\api\profile.js
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export async function fetchProfile() {
@@ -20,7 +22,9 @@ export async function updateProfile(data) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.message || "Failed to update profile");
+    const err = new Error(body?.message || "Failed to update profile");
+    err.field = body?.field;
+    throw err;
   }
   return res.json();
 }

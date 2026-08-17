@@ -1,40 +1,86 @@
-// frontend/src/components/layout/Header.jsx
-
 import { useState } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Bell, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { useTheme } from "@/context/ThemeContext";
-import logoDark from "@/assets/logo-dark.png";
-import logoLight from "@/assets/logo-light.png";
+import { useAuth } from "@/context/AuthContext";
+import { logoutUser } from "@/lib/api/auth";
 
-export function Header() {
-  const [open, setOpen] = useState(false);
-  const { theme } = useTheme();
+export function Header({ onToggleCollapse }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = user
+    ? `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase()
+    : "";
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } finally {
+      navigate("/login");
+    }
+  };
 
   return (
-    <header className="flex items-center justify-between border-b border-zinc-500 dark:border-zinc-500 bg-header text-header-foreground px-4 py-3">
-      
-      <div className="flex items-center gap-3">
-        <Sheet open={open} onOpenChange={setOpen}>
+    <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-3">
+      <div className="flex flex-1 items-center gap-3">
+        {/* Desktop: toggles the persistent sidebar's collapsed state */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden md:inline-flex"
+          onClick={onToggleCollapse}
+        >
+          <Menu className="size-5" />
+        </Button>
+
+        {/* Mobile: opens the sidebar as a sliding overlay */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" >
-              <Menu className="size-7" />
+            <Button variant="ghost" size="icon" className="md:hidden">
+              <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 data-[side=left]:w-80 data-[side=left]:sm:max-w-80 " showCloseButton={false}>
+          <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
             <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <Sidebar onNavigate={() => setOpen(false)} />
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
+      </div>
 
-        <img
-          src={theme === "dark" ? logoDark : logoLight}
-          alt="Logo"
-          className="h-12 w-auto -ml-1"
-        />
-        <h1 className="text-lg font-bold text-secondary-foreground -ml-3">Youth Engagement System</h1>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell size={18} />
+          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" />
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1 outline-none">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                {initials || "?"}
+              </div>
+              <ChevronDown size={14} className="text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate("/profile")}>
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

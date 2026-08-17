@@ -1,8 +1,9 @@
+// frontend/src/lib/api/auth.js
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export async function loginUser({ username, password }) {
   let res;
-
 
   try {
     res = await fetch(`${API_URL}/auth/login`, {
@@ -11,6 +12,7 @@ export async function loginUser({ username, password }) {
       credentials: "include",
       body: JSON.stringify({ username, password }),
     });
+    console.log("Look at this:", res);
   } catch (networkErr) {
     console.error("Network error:", networkErr);
     const err = new Error(

@@ -10,14 +10,8 @@ async function authenticate(username, password) {
     throw { status: 401, message: "Invalid username or password" };
   }
 
-  if (user.status === "locked") {
-    throw { status: 403, message: "This account is locked. Contact an admin." };
-  }
   if (user.status === "deactivated") {
-    throw { status: 403, message: "This account has been deactivated." };
-  }
-  if (user.status === "unverified") {
-    throw { status: 403, message: "This account is not yet verified." };
+    throw { status: 403, message: "This account has been deactivated. Contact an admin." };
   }
 
   const passwordMatches = await bcrypt.compare(password, user.password);

@@ -4,11 +4,13 @@ const authService = require("../services/authService");
 
 const router = express.Router();
 
-async function login(req, res) {
+router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
   }
 
   try {
@@ -20,11 +22,13 @@ async function login(req, res) {
       return res.status(err.status).json({ message: err.message });
     }
     console.error("Login error:", err);
-    res.status(500).json({ message: "Something went wrong. Please try again." });
+    res
+      .status(500)
+      .json({ message: "Something went wrong. Please try again." });
   }
-}
+});
 
-function logout(req, res) {
+router.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error("Logout error:", err);
@@ -33,17 +37,13 @@ function logout(req, res) {
     res.clearCookie("connect.sid");
     res.json({ message: "Logged out" });
   });
-}
+});
 
-function me(req, res) {
-  if (!req.session.user) {
-    return res.status(401).json({ message: "Not logged in" });
-  }
-  res.json({ user: req.session.user });
-}
-
-router.post("/login", login);
-router.post("/logout", logout);
-router.get("/me", me);
-
+// router.get("/me", me);
+// function me(req, res) {
+//   if (!req.session.user) {
+//     return res.status(401).json({ message: "Not logged in" });
+//   }
+//   res.json({ user: req.session.user });
+// }
 module.exports = router;

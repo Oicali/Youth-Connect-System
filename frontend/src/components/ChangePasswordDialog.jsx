@@ -2,8 +2,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { changePasswordSchema } from "@/lib/validations/changePassword";
-import { changePassword } from "@/lib/api/user";
+import { changePassword } from "@/lib/api/profile";
 import { useErrorModal } from "@/context/ErrorModalContext";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ export function ChangePasswordDialog({ open, onOpenChange }) {
   const onSubmit = async (data) => {
     try {
       await changePassword(data);
+      toast.success("Password updated");
       reset();
       onOpenChange(false);
     } catch (err) {
