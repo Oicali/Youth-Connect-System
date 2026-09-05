@@ -1,11 +1,14 @@
+// frontend\src\pages\Profile.jsx
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Pencil, X, Camera, Lock } from "lucide-react";
 
-import { profileSchema } from "@/lib/validations/profile";
-import { fetchProfile, updateProfile } from "@/lib/api/profile";
+import { profileSchema } from "@/lib/validations/user";
+import { updateProfile } from "@/lib/api/profile";
+import { useAuth } from "@/context/AuthContext";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import { useLoadingModal } from "@/context/LoadingModalContext";
 
@@ -54,6 +57,7 @@ export default function Profile() {
   const [savedValues, setSavedValues] = useState(emptyValues);
   const { showError } = useErrorModal();
   const { runWithLoading } = useLoadingModal();
+  const { user: authUser, refetch } = useAuth();
 
   const {
     register,
@@ -71,49 +75,43 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { user } = await runWithLoading("Loading profile...", fetchProfile);
-        setAccount({
-          username: user.username,
-          role: user.role_name,
-          status: user.status,
-        });
-        const values = {
-          first_name: user.first_name || "",
-          last_name: user.last_name || "",
-          middle_name: user.middle_name || "",
-          suffix: user.suffix || "",
-          email: user.email || "",
-          phone: user.phone || "",
-          alt_phone: user.alt_phone || "",
-          gender: user.gender || "",
-          birthdate: user.birthdate ? user.birthdate.split("T")[0] : "",
-        };
-        setSavedValues(values);
-        reset(values);
-      } catch (err) {
-        showError(err.message, "Could Not Load Profile");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  if (!authUser) return;
+  setAccount({
+    username: authUser.username,
+    role: authUser.role_name,
+    status: authUser.status,
+  });
+  const values = {
+    first_name: authUser.first_name || "",
+    last_name: authUser.last_name || "",
+    middle_name: authUser.middle_name || "",
+    suffix: authUser.suffix || "",
+    email: authUser.email || "",
+    phone: authUser.phone || "",
+    alt_phone: authUser.alt_phone || "",
+    gender: authUser.gender || "",
+    birthdate: authUser.birthdate ? authUser.birthdate.split("T")[0] : "",
+  };
+  setSavedValues(values);
+  reset(values);
+  setLoading(false);
+}, [authUser]);
 
   const onSubmit = async (data) => {
-    try {
-      await runWithLoading("Saving profile...", () => updateProfile(data));
-      setSavedValues(data);
-      setIsEditing(false);
-      toast.success("Profile updated");
-    } catch (err) {
-      if (err.field) {
-        setError(err.field, { message: err.message });
-      } else {
-        showError(err.message, "Could Not Save Profile");
-      }
+  try {
+    await runWithLoading("Saving profile...", () => updateProfile(data));
+    setSavedValues(data);
+    setIsEditing(false);
+    toast.success("Profile updated");
+    refetch();
+  } catch (err) {
+    if (err.field) {
+      setError(err.field, { message: err.message });
+    } else {
+      showError(err.message, "Could Not Save Profile");
     }
-  };
+  }
+};
 
   const handleCancel = () => {
     reset(savedValues);
@@ -138,7 +136,7 @@ export default function Profile() {
     <div className="space-y-4">
       <div className="flex items-center gap-2 justify-between ">
         <div>
-          <h1 className="text-2xl font-bold">Profile settings</h1>
+          <h1 className="text-2xl font-bold">My Profile</h1>
           <p className="text-sm text-muted-foreground">
             Manage your personal information and account settings
           </p>

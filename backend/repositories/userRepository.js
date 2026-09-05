@@ -68,7 +68,7 @@ async function findAll({ search, role, status, page = 1, limit = 15 } = {}) {
 
   if (search) {
     conditions.push(
-      `(u.username ILIKE $${i} OR u.email ILIKE $${i} OR u.first_name ILIKE $${i} OR u.last_name ILIKE $${i})`
+      `(u.phone ILIKE $${i} OR u.middle_name ILIKE $${i} OR u.email ILIKE $${i} OR u.first_name ILIKE $${i} OR u.last_name ILIKE $${i})`
     );
     values.push(`%${search}%`);
     i++;
@@ -90,7 +90,7 @@ async function findAll({ search, role, status, page = 1, limit = 15 } = {}) {
   const rowsResult = await pool.query(
     `SELECT u.user_id, u.username, u.email, u.first_name, u.last_name,
             u.middle_name, u.suffix, u.phone, u.alt_phone, u.gender,
-            u.birthdate, u.status, u.created_at, r.role_name, r.role_id
+            u.birthdate, u.status, u.created_at, u.updated_at, r.role_name, r.role_id
      FROM users u
      JOIN roles r ON u.role_id = r.role_id
      ${whereClause}

@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
-import { updateUser } from "@/lib/api/users";
-import { useErrorModal } from "@/context/ErrorModalContext";
 import { toast } from "sonner";
+
+import { addUserSchema, editUserSchema } from "@/lib/validations/user";
+import { createUser, updateUser } from "@/lib/api/users";
+import { useErrorModal } from "@/context/ErrorModalContext";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,35 +17,31 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 
-const editUserSchema = z
-  .object({
-    first_name: z.string().min(1, "Required"),
-    last_name: z.string().min(1, "Required"),
-    middle_name: z.string().optional().or(z.literal("")),
-    suffix: z.string().optional().or(z.literal("")),
-    email: z.string().email("Invalid email"),
-    phone: z.string().min(1, "Required"),
-    alt_phone: z.string().optional().or(z.literal("")),
-    gender: z.string().min(1, "Required"),
-    birthdate: z.string().min(1, "Required"),
-    role_id: z.string().min(1, "Required"),
-  })
-  .refine((data) => !data.alt_phone || data.alt_phone !== data.phone, {
-    message: "Alternate phone must be different from phone",
-    path: ["alt_phone"],
-  });
+const emptyDefaults = {
+  username: "", password: "", confirmPassword: "",
+  first_name: "", last_name: "", middle_name: "", suffix: "",
+  email: "", phone: "", alt_phone: "", gender: "", birthdate: "", role_id: "",
+};
 
-export function EditUserDialog({ user, open, onOpenChange, onSaved }) {
+export function UserFormDialog({ user, open, onOpenChange, onSaved }) {
+  const isEdit = !!user;
   const { showError } = useErrorModal();
 
   const {
     register, handleSubmit, reset, setValue, watch,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(editUserSchema) });
+  } = useForm({
+    resolver: zodResolver(isEdit ? editUserSchema : addUserSchema),
+    defaultValues: emptyDefaults,
+  });
 
+  // Re-populate whenever the target user or open-state changes, so switching
+  // between "add" and "edit" (or between two different users) always starts clean.
   useEffect(() => {
-    if (user) {
+    if (!open) return;
+    if (isEdit) {
       reset({
+        ...emptyDefaults,
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         middle_name: user.middle_name || "",
@@ -57,31 +53,72 @@ export function EditUserDialog({ user, open, onOpenChange, onSaved }) {
         birthdate: user.birthdate ? user.birthdate.split("T")[0] : "",
         role_id: String(user.role_id),
       });
+    } else {
+      reset(emptyDefaults);
     }
-  }, [user, reset]);
+  }, [user, open, isEdit, reset]);
 
   const onSubmit = async (data) => {
+    const { confirmPassword, ...payload } = data;
     try {
-      await updateUser(user.user_id, { ...data, role_id: Number(data.role_id) });
-      toast.success("User updated");
+      if (isEdit) {
+        await updateUser(user.user_id, { ...payload, role_id: Number(payload.role_id) });
+        toast.success("User updated");
+      } else {
+        await createUser({ ...payload, role_id: Number(payload.role_id) });
+        toast.success("User created");
+      }
       onSaved();
       onOpenChange(false);
     } catch (err) {
-      showError(err.message, "Could Not Update User");
+      showError(err.message, isEdit ? "Could Not Update User" : "Could Not Create User");
     }
   };
-
-  if (!user) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit {user.username}</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit ${user.username}` : "Add new user"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-4">
+            {!isEdit && (
+              <div className="space-y-2">
+                <Label>Username</Label>
+                <Input {...register("username")} />
+                {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={watch("role_id")} onValueChange={(v) => setValue("role_id", v)}>
+                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Admin</SelectItem>
+                  <SelectItem value="2">Volunteer</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.role_id && <p className="text-sm text-destructive">{errors.role_id.message}</p>}
+            </div>
+
+            {!isEdit && (
+              <>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input type="password" {...register("password")} />
+                  {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label>Confirm password</Label>
+                  <Input type="password" {...register("confirmPassword")} />
+                  {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label>First name</Label>
               <Input {...register("first_name")} />
@@ -100,6 +137,7 @@ export function EditUserDialog({ user, open, onOpenChange, onSaved }) {
               <Label>Suffix</Label>
               <Input {...register("suffix")} />
             </div>
+
             <div className="space-y-2 col-span-2">
               <Label>Email</Label>
               <Input type="email" {...register("email")} />
@@ -113,36 +151,32 @@ export function EditUserDialog({ user, open, onOpenChange, onSaved }) {
             <div className="space-y-2">
               <Label>Alt phone</Label>
               <Input {...register("alt_phone")} />
+              {errors.alt_phone && <p className="text-sm text-destructive">{errors.alt_phone.message}</p>}
             </div>
+
             <div className="space-y-2">
               <Label>Gender</Label>
               <Select value={watch("gender")} onValueChange={(v) => setValue("gender", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Birthdate</Label>
               <Input type="date" {...register("birthdate")} />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Role</Label>
-              <Select value={watch("role_id")} onValueChange={(v) => setValue("role_id", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Admin</SelectItem>
-                  <SelectItem value="2">Volunteer</SelectItem>
-                </SelectContent>
-              </Select>
+              {errors.birthdate && <p className="text-sm text-destructive">{errors.birthdate.message}</p>}
             </div>
           </div>
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save changes"}
+              {isSubmitting
+                ? (isEdit ? "Saving..." : "Creating...")
+                : (isEdit ? "Save changes" : "Create user")}
             </Button>
           </DialogFooter>
         </form>

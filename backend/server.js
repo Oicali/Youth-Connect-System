@@ -9,6 +9,7 @@ require("dotenv").config();
 const pool = require("./db");
 const authRoutes = require("./controllers/authController");
 const userRoutes = require("./controllers/userController");
+const memberRoutes = require("./controllers/memberController");
 
 const app = express();
 
@@ -37,6 +38,6 @@ app.use(session({
 
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
-
+app.use("/members", memberRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

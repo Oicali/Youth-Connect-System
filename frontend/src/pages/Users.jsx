@@ -1,16 +1,18 @@
 // frontend\src\pages\Users.jsx
 
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Trash2, RotateCcw, Search as SearchIcon, Undo2 } from "lucide-react";
+import { Pencil, Trash2, RotateCcw, Search as SearchIcon, Undo2, Archive } from "lucide-react";
 
 import { fetchUsers, setUserStatus } from "@/lib/api/users";
 import { UserPlus } from "lucide-react";
 import { useLoadingModal } from "@/context/LoadingModalContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   Pagination, PaginationContent, PaginationItem,
   PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
-import { AddUserDialog } from "@/components/AddUserDialog";
+import { UserFormDialog } from "@/components/UserFormDialog";
+import { ArchiveUsersModal } from "@/components/ArchiveUsersModal";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import { toast } from "sonner";
 
@@ -42,10 +44,9 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { EditUserDialog } from "@/components/EditUserDialog";
 
 const ROLE_LABELS = { all: "All roles", admin: "Admin", volunteer: "Volunteer" };
-const STATUS_LABELS = { all: "All statuses", active: "Active", deactivated: "Deactivated" };
+
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -56,18 +57,19 @@ export default function Users() {
   const [search, setSearch] = useState("");
   const [pendingRole, setPendingRole] = useState("all");
   const [role, setRole] = useState("all");
-  const [pendingStatus, setPendingStatus] = useState("all");
-  const [status, setStatus] = useState("all");
+  const status = "active"; // deactivated users live in the Archive modal, not this table
 
   const [editingUser, setEditingUser] = useState(null);
   const [confirmTarget, setConfirmTarget] = useState(null); // { user, nextStatus }
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 25;
 
   const { showError } = useErrorModal();
   const { runWithLoading } = useLoadingModal();
+  const { user: currentUser } = useAuth();
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -92,12 +94,11 @@ export default function Users() {
   // reset to page 1 whenever a committed filter changes, so you don't get stranded on an empty page
   useEffect(() => {
     setPage(1);
-  }, [search, role, status]);
+  }, [search, role]);
 
   const handleApplyFilters = () => {
     setSearch(searchInput.trim());
     setRole(pendingRole);
-    setStatus(pendingStatus);
   };
 
   const handleResetFilters = () => {
@@ -105,8 +106,6 @@ export default function Users() {
     setSearch("");
     setPendingRole("all");
     setRole("all");
-    setPendingStatus("all");
-    setStatus("all");
   };
 
   const handleSearchKeyDown = (e) => {
@@ -115,6 +114,14 @@ export default function Users() {
       handleApplyFilters();
     }
   };
+
+  const filtersDirty =
+    searchInput.trim() !== search ||
+    pendingRole !== role;
+
+  const filtersAtDefault =
+    !searchInput && !search &&
+    pendingRole === "all" && role === "all";
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -156,10 +163,16 @@ export default function Users() {
           </p>
         </div>
 
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <UserPlus size={16} className="mr-2" />
-          Add user
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setArchiveOpen(true)}>
+            <Archive size={16} className="mr-2" />
+            Archive
+          </Button>
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <UserPlus size={16} className="mr-2" />
+            Add user
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card p-4">
@@ -167,7 +180,7 @@ export default function Users() {
           <div className="flex min-w-[200px] flex-1 flex-col gap-1">
             <span className="px-1 text-xs text-muted-foreground">Search</span>
             <Input
-              placeholder="Search name, username, or email..."
+              placeholder="Search name, email, or phone..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={handleSearchKeyDown}
@@ -187,22 +200,26 @@ export default function Users() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:flex-none">
-            <span className="px-1 text-xs text-muted-foreground">Status</span>
-            <Select value={pendingStatus} onValueChange={setPendingStatus}>
-              <SelectTrigger className="w-full bg-card sm:w-40"><SelectValue placeholder="Status">{STATUS_LABELS[pendingStatus]}</SelectValue></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="deactivated">Deactivated</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={handleApplyFilters} aria-label="Apply filters" className="shrink-0">
+            <Button
+              variant={filtersDirty ? "default" : "outline"}
+              size="icon"
+              onClick={handleApplyFilters}
+              disabled={!filtersDirty}
+              aria-label="Apply filters"
+              className="shrink-0"
+            >
               <SearchIcon size={16} />
             </Button>
-            <Button variant="outline" size="icon" onClick={handleResetFilters} aria-label="Reset filters" className="shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleResetFilters}
+              disabled={filtersAtDefault}
+              aria-label="Reset filters"
+              className="shrink-0"
+            >
               <Undo2 size={16} />
             </Button>
           </div>
@@ -213,21 +230,20 @@ export default function Users() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <TableHead className="pl-4">Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Gender</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="pr-8 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={7}
                   className="text-center text-muted-foreground"
                 >
                   Loading...
@@ -236,79 +252,86 @@ export default function Users() {
             ) : users.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={7}
                   className="text-center text-muted-foreground"
                 >
                   No users found
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((u) => (
-                <TableRow key={u.user_id}>
-                  <TableCell>
-                    {u.first_name} {u.last_name}
-                  </TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.phone}</TableCell>
-                  <TableCell className="capitalize">{u.gender}</TableCell>
-                  <TableCell>
-                    <Badge
-                      className="capitalize"
-                      variant={
-                        u.role_name === "admin" ? "default" : "secondary"
-                      }
-                    >
-                      {u.role_name}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className="capitalize"
-                      variant={
-                        u.status === "active" ? "success" : "destructive"
-                      }
-                    >
-                      {u.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(u.created_at)}
-                  </TableCell>
-                  <TableCell className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingUser(u)}
-                    >
-                      <Pencil size={16} />
-                    </Button>
-                    {u.status === "deactivated" ? (
+              users.map((u) => {
+                const isSelf = u.user_id === currentUser?.user_id;
+                return (
+                  <TableRow key={u.user_id}>
+                    <TableCell className="pl-4">
+                      {u.first_name} {u.last_name}
+                    </TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.phone}</TableCell>
+                    <TableCell className="capitalize">{u.gender}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className="capitalize"
+                        variant={
+                          u.role_name === "admin" ? "default" : "secondary"
+                        }
+                      >
+                        {u.role_name}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(u.created_at)}
+                    </TableCell>
+                    <TableCell className="flex justify-end gap-2 pr-4">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() =>
-                          setConfirmTarget({ user: u, nextStatus: "active" })
+                        disabled={isSelf}
+                        title={
+                          isSelf
+                            ? "Use Profile settings to edit your own account"
+                            : undefined
                         }
+                        onClick={() => setEditingUser(u)}
                       >
-                        <RotateCcw size={16} className="text-green-600" />
+                        <Pencil size={16} />
                       </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setConfirmTarget({
-                            user: u,
-                            nextStatus: "deactivated",
-                          })
-                        }
-                      >
-                        <Trash2 size={16} className="text-destructive" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+                      {u.status === "deactivated" ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isSelf}
+                          onClick={() =>
+                            setConfirmTarget({ user: u, nextStatus: "active" })
+                          }
+                        >
+                          <RotateCcw size={16} className="text-green-600" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isSelf}
+                          title={
+                            isSelf
+                              ? "You can't deactivate your own account"
+                              : undefined
+                          }
+                          onClick={() =>
+                            setConfirmTarget({
+                              user: u,
+                              nextStatus: "deactivated",
+                            })
+                          }
+                        >
+                          <Trash2 size={16} className="text-destructive" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -344,16 +367,21 @@ export default function Users() {
         </Pagination>
       )}
 
-      <AddUserDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onCreated={loadUsers}
+      <ArchiveUsersModal
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        onRestored={loadUsers}
       />
 
-      <EditUserDialog
+      <UserFormDialog
         user={editingUser}
-        open={!!editingUser}
-        onOpenChange={(open) => !open && setEditingUser(null)}
+        open={addDialogOpen || !!editingUser}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddDialogOpen(false);
+            setEditingUser(null);
+          }
+        }}
         onSaved={loadUsers}
       />
 

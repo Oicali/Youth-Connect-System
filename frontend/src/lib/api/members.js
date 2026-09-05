@@ -1,0 +1,100 @@
+// frontend/src/lib/api/members.js
+const API_URL = import.meta.env.VITE_API_URL;
+
+export async function fetchMembers({ search, role, gender, connectionStatus, page = 1, limit = 25 } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (role && role !== "all") {
+    params.set("role", Array.isArray(role) ? role.join(",") : role);
+  }
+  if (gender && gender !== "all") params.set("gender", gender);
+  if (connectionStatus && connectionStatus !== "all") params.set("connectionStatus", connectionStatus);
+  params.set("page", page);
+  params.set("limit", limit);
+
+  const res = await fetch(`${API_URL}/members?${params.toString()}`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to load members");
+  }
+  return res.json(); // { members, total }
+}
+
+export async function createMember(data) {
+  const res = await fetch(`${API_URL}/members`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const err = new Error(body?.message || "Failed to create member");
+    err.field = body?.field;
+    throw err;
+  }
+  return res.json(); // { member }
+}
+
+export async function updateMember(id, data) {
+  const res = await fetch(`${API_URL}/members/${id}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const err = new Error(body?.message || "Failed to update member");
+    err.field = body?.field;
+    throw err;
+  }
+  return res.json(); // { member }
+}
+
+export async function setMemberStatus(id, memberStatus, { cascadeUnassignMentees = false } = {}) {
+  const res = await fetch(`${API_URL}/members/${id}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      member_status: memberStatus,
+      cascade_unassign_mentees: cascadeUnassignMentees,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to update status");
+  }
+  return res.json(); // { member }
+}
+
+export async function assignMentor(menteeId, mentorId) {
+  const res = await fetch(`${API_URL}/members/${menteeId}/mentor`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mentor_id: mentorId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const err = new Error(body?.message || "Failed to assign mentor");
+    err.field = body?.field;
+    throw err;
+  }
+  return res.json();
+}
+
+export async function unassignMentor(menteeId) {
+  const res = await fetch(`${API_URL}/members/${menteeId}/mentor`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to unassign mentor");
+  }
+  return res.json();
+}

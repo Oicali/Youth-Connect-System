@@ -1,3 +1,5 @@
+// frontend/src/lib/api/users.js
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export async function fetchUsers({ search, role, status, page = 1, limit = 15 } = {}) {
