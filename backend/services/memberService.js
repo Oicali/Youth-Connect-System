@@ -97,6 +97,44 @@ async function unassignMentor(menteeId) {
   return memberRepository.unassignMentor(menteeId);
 }
 
+// Connect -> CareGroup transition: same mentor validation as assignMentor,
+// but also closes out the Connect pipeline (connection_status/assigned_to -> NULL)
+async function joinCareGroup(menteeId, mentorId) {
+  const mentee = await getMember(menteeId); // throws 404 if missing
+
+  if (mentee.member_status === "removed") {
+    throw { status: 400, message: "Cannot assign a mentor to a removed member" };
+  }
+
+  const mentor = await getMember(mentorId); // throws 404 if missing
+  if (mentor.member_status !== "mentor") {
+    throw { status: 400, message: "Assigned member is not a mentor", field: "mentor_id" };
+  }
+
+  return memberRepository.joinCareGroup(menteeId, mentorId);
+}
+
+// connectors must be an active mentor — same rule as assignMentor (gender-match
+// is UI-only, enforced by the frontend's fetchMembers filter, not here)
+async function assignConnector(memberId, connectorId) {
+  await getMember(memberId); // throws 404 if missing
+  const connector = await getMember(connectorId); // throws 404 if missing
+  if (connector.member_status !== "mentor") {
+    throw { status: 400, message: "Assigned connector is not a mentor", field: "connector_id" };
+  }
+  return memberRepository.assignConnector(memberId, connectorId);
+}
+
+async function unassignConnector(memberId) {
+  await getMember(memberId); // throws 404 if missing
+  return memberRepository.unassignConnector(memberId);
+}
+
+async function markConnectionRemoved(memberId) {
+  await getMember(memberId); // throws 404 if missing
+  return memberRepository.markConnectionRemoved(memberId);
+}
+
 module.exports = {
   getMember,
   listMembers,
@@ -105,4 +143,8 @@ module.exports = {
   setMemberStatus,
   assignMentor,
   unassignMentor,
+  joinCareGroup,
+  assignConnector,
+  unassignConnector,
+  markConnectionRemoved,
 };

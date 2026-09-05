@@ -449,13 +449,15 @@ export default function CareGroup() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setEditingMember(m)}
+                      className="bg-primary/10 hover:bg-primary/20"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={16} className="text-primary" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeletingMember(m)}
+                      className="bg-destructive/10 hover:bg-destructive/20"
                     >
                       <Trash2 size={16} className="text-destructive" />
                     </Button>

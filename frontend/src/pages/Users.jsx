@@ -294,8 +294,9 @@ export default function Users() {
                             : undefined
                         }
                         onClick={() => setEditingUser(u)}
+                        className="bg-primary/10 hover:bg-primary/20"
                       >
-                        <Pencil size={16} />
+                        <Pencil size={16} className="text-primary" />
                       </Button>
                       {u.status === "deactivated" ? (
                         <Button
@@ -305,8 +306,9 @@ export default function Users() {
                           onClick={() =>
                             setConfirmTarget({ user: u, nextStatus: "active" })
                           }
+                          className="bg-success/10 hover:bg-success/20"
                         >
-                          <RotateCcw size={16} className="text-green-600" />
+                          <RotateCcw size={16} className="text-success" />
                         </Button>
                       ) : (
                         <Button
@@ -324,6 +326,7 @@ export default function Users() {
                               nextStatus: "deactivated",
                             })
                           }
+                          className="bg-destructive/10 hover:bg-destructive/20"
                         >
                           <Trash2 size={16} className="text-destructive" />
                         </Button>
