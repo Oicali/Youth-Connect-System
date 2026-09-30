@@ -31,6 +31,24 @@ const withStatus = (schema) =>
 
 export const addMemberSchema = withAltPhoneCheck(withStatus(memberBaseSchema));
 
+// Same shape as add — edit modal only touches base fields. connection_status and
+// the connector (assigned_to) are managed separately: connector via ConnectorPicker
+// inside the modal (assignConnector/unassignConnector), connection_status via the
+// table's status actions (join care group / mark removed) — never via PUT /members/:id.
+export const editConnectMemberSchema = withAltPhoneCheck(memberBaseSchema);
+
+
 // Same shape as add for now. member_status stays in this schema because the Status field
 // lives in the same form — it's saved through PATCH /:id/status separately, not PUT /:id.
 export const editMemberSchema = withAltPhoneCheck(withStatus(memberBaseSchema));
+
+// Connect first-timer intake — same fields as add/edit, no member_status select
+// (locked server-side to the default "mentee"; connection_status starts at "pending").
+// gender is required here (unlike memberBaseSchema) because JoinCareGroupModal filters
+// mentors by gender — a first-timer with no gender on file can't be moved into a care
+// group without the Connect team picking gender first, so we force it at intake instead.
+const connectMemberSchema = memberBaseSchema.extend({
+  gender: z.string().trim().min(1, "Gender is required"),
+});
+
+export const addConnectMemberSchema = withAltPhoneCheck(connectMemberSchema);

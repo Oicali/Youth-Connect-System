@@ -9,9 +9,11 @@ const router = express.Router();
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const { search, role, connectionStatus, gender, page, limit } = req.query;
+    const { search, role, connectionStatus, gender, addedYear, addedMonth, page, limit } = req.query;
     const { rows, total } = await memberService.listMembers({
       search, role, connectionStatus, gender,
+      addedYear: addedYear ? Number(addedYear) : undefined,
+      addedMonth: addedMonth ? Number(addedMonth) : undefined,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 15,
     });
@@ -89,6 +91,52 @@ router.delete("/:id/mentor", requireAuth, requireRole(["admin"]), async (req, re
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
     console.error("Unassign mentor error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+router.post("/:id/join-care-group", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { mentor_id } = req.body;
+    const updated = await memberService.joinCareGroup(req.params.id, mentor_id);
+    res.json({ member: updated });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message, field: err.field });
+    console.error("Join care group error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+router.post("/:id/connector", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { connector_id } = req.body;
+    const updated = await memberService.assignConnector(req.params.id, connector_id);
+    res.json({ member: updated });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    console.error("Assign connector error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+router.delete("/:id/connector", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const updated = await memberService.unassignConnector(req.params.id);
+    res.json({ member: updated });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    console.error("Unassign connector error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+router.post("/:id/connection/remove", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const updated = await memberService.markConnectionRemoved(req.params.id);
+    res.json({ member: updated });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    console.error("Mark connection removed error:", err);
     res.status(500).json({ message: "Something went wrong" });
   }
 });

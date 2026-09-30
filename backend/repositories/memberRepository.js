@@ -6,7 +6,8 @@ const MEMBER_COLUMNS = `
   m.phone_num, m.alt_phone, m.main_church, m.mentor_id, m.ministry,
   m.member_status, m.connection_status, m.assigned_to,
   m.added_at, m.updated_at, m.facebook, m.instagram,
-  mentor.first_name AS mentor_first_name, mentor.last_name AS mentor_last_name
+  mentor.first_name AS mentor_first_name, mentor.last_name AS mentor_last_name,
+  connector.first_name AS connector_first_name, connector.last_name AS connector_last_name
 `;
 
 async function findById(memberId) {
@@ -14,13 +15,14 @@ async function findById(memberId) {
     `SELECT ${MEMBER_COLUMNS}
      FROM members m
      LEFT JOIN members mentor ON m.mentor_id = mentor.id
+     LEFT JOIN members connector ON m.assigned_to = connector.id
      WHERE m.id = $1`,
     [memberId]
   );
   return result.rows[0] || null;
 }
 
-async function findAll({ search, role, gender, connectionStatus, page = 1, limit = 15 } = {}) {
+async function findAll({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 15 } = {}) {
   const conditions = [];
   const values = [];
   let i = 1;
@@ -65,13 +67,60 @@ async function findAll({ search, role, gender, connectionStatus, page = 1, limit
 }
 
   if (connectionStatus) {
-    conditions.push(`m.connection_status = $${i}`);
-    values.push(connectionStatus);
+    // "any" = has ANY connection_status set (pending/assigned/removed) — as opposed
+    // to NULL, meaning never entered the pipeline. "active" = still actively in the
+    // pipeline (pending or assigned only) — excludes NULL and 'removed'. This is what
+    // Connect now uses since pending/assigned aren't separate tabs anymore.
+    if (connectionStatus === "any") {
+      conditions.push(`m.connection_status IS NOT NULL`);
+    } else if (connectionStatus === "active") {
+      conditions.push(`m.connection_status = ANY($${i}::text[])`);
+      values.push(["pending", "assigned"]);
+      i++;
+    } else {
+      conditions.push(`m.connection_status = $${i}`);
+      values.push(connectionStatus);
+      i++;
+    }
+  }
+
+  if (hasAssigned === "true") {
+    conditions.push(`m.assigned_to IS NOT NULL`);
+  } else if (hasAssigned === "false") {
+    conditions.push(`m.assigned_to IS NULL`);
+  }
+
+    if (addedYear) {
+    conditions.push(`EXTRACT(YEAR FROM m.added_at) = $${i}`);
+    values.push(addedYear);
+    i++;
+  }
+
+  if (addedMonth) {
+    conditions.push(`EXTRACT(MONTH FROM m.added_at) = $${i}`);
+    values.push(addedMonth);
     i++;
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const offset = (page - 1) * limit;
+
+  // sort presets — default (status-priority) is what CareGroup's Mentors tab still
+  // implicitly relies on; the other two are explicit opt-ins from specific pages
+  const ORDER_CLAUSES = {
+    no_mentor_first_updated: `(m.mentor_id IS NOT NULL) ASC, m.updated_at DESC, m.last_name ASC, m.first_name ASC`,
+    no_assigned_first_added: `(m.assigned_to IS NOT NULL) ASC, m.added_at ASC, m.last_name ASC, m.first_name ASC`,
+  };
+  const defaultOrderClause = `
+       (m.mentor_id IS NOT NULL) ASC,
+       CASE
+         WHEN m.member_status = 'potential mentor' THEN 0
+         WHEN m.member_status = 'mentee' THEN 1
+         WHEN m.member_status = 'mentor' AND m.mentor_id IS NOT NULL THEN 2
+         ELSE 3
+       END,
+       m.last_name ASC, m.first_name ASC`;
+  const orderClause = ORDER_CLAUSES[sort] || defaultOrderClause;
 
   const rowsResult = await pool.query(
     `SELECT ${MEMBER_COLUMNS},
@@ -84,17 +133,10 @@ async function findAll({ search, role, gender, connectionStatus, page = 1, limit
      FROM members m
      LEFT JOIN members mentor ON m.mentor_id = mentor.id
      LEFT JOIN members mentee ON mentee.mentor_id = m.id
+     LEFT JOIN members connector ON m.assigned_to = connector.id
      ${whereClause}
-     GROUP BY m.id, mentor.first_name, mentor.last_name
-     ORDER BY
-       (m.mentor_id IS NOT NULL) ASC,
-       CASE
-         WHEN m.member_status = 'potential mentor' THEN 0
-         WHEN m.member_status = 'mentee' THEN 1
-         WHEN m.member_status = 'mentor' AND m.mentor_id IS NOT NULL THEN 2
-         ELSE 3
-       END,
-       m.last_name ASC, m.first_name ASC
+     GROUP BY m.id, mentor.first_name, mentor.last_name, connector.first_name, connector.last_name
+     ORDER BY ${orderClause}
      LIMIT $${i} OFFSET $${i + 1}`,
     [...values, limit, offset]
   );
@@ -113,18 +155,18 @@ async function create(fields) {
   const {
     first_name, last_name, gender, birth_date, address,
     phone_num, alt_phone, main_church, ministry,
-    member_status, facebook, instagram,
+    member_status, connection_status, facebook, instagram,
   } = fields;
 
   const result = await pool.query(
     `INSERT INTO members
       (first_name, last_name, gender, birth_date, address, phone_num,
-       alt_phone, main_church, ministry, member_status, facebook, instagram)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-     RETURNING id, first_name, last_name, member_status, connection_status, added_at`,
+       alt_phone, main_church, ministry, member_status, connection_status, facebook, instagram)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+     RETURNING id, first_name, last_name, member_status, connection_status, assigned_to, added_at`,
     [first_name, last_name, gender || null, birth_date || null, address || null,
      phone_num || null, alt_phone || null, main_church || null, ministry || null,
-     member_status || "mentee", facebook || null, instagram || null]
+     member_status || null, connection_status || null, facebook || null, instagram || null]
   );
   return result.rows[0];
 }
@@ -171,10 +213,13 @@ async function setMemberStatus(memberId, memberStatus) {
   return result.rows[0];
 }
 
+// pure CareGroup mentor assignment — does NOT touch connection_status.
+// Use for (re)assigning a mentor to someone already in a care group.
+// First-time Connect -> CareGroup transitions go through joinCareGroup() instead.
 async function assignMentor(menteeId, mentorId) {
   const result = await pool.query(
     `UPDATE members
-     SET mentor_id = $1, connection_status = 'assigned', updated_at = CURRENT_DATE
+     SET mentor_id = $1, updated_at = CURRENT_DATE
      WHERE id = $2
      RETURNING id, first_name, last_name, mentor_id, connection_status`,
     [mentorId, menteeId]
@@ -185,10 +230,59 @@ async function assignMentor(menteeId, mentorId) {
 async function unassignMentor(menteeId) {
   const result = await pool.query(
     `UPDATE members
-     SET mentor_id = NULL, connection_status = 'removed', updated_at = CURRENT_DATE
+     SET mentor_id = NULL, updated_at = CURRENT_DATE
      WHERE id = $1
      RETURNING id, first_name, last_name, mentor_id, connection_status`,
     [menteeId]
+  );
+  return result.rows[0];
+}
+
+// Connect -> CareGroup transition: assigns the official mentor AND closes out
+// the Connect pipeline in one shot (connection_status/assigned_to cleared).
+async function joinCareGroup(menteeId, mentorId) {
+  const result = await pool.query(
+    `UPDATE members
+     SET mentor_id = $1, member_status = 'mentee', connection_status = NULL, assigned_to = NULL, updated_at = CURRENT_DATE
+     WHERE id = $2
+     RETURNING id, first_name, last_name, member_status, mentor_id, connection_status, assigned_to`,
+    [mentorId, menteeId]
+  );
+  return result.rows[0];
+}
+
+// assigns a Connect-ministry connector (follow-up volunteer) — independent of mentor_id
+async function assignConnector(memberId, connectorId) {
+  const result = await pool.query(
+    `UPDATE members
+     SET assigned_to = $1, connection_status = 'assigned', updated_at = CURRENT_DATE
+     WHERE id = $2
+     RETURNING id, first_name, last_name, assigned_to, connection_status`,
+    [connectorId, memberId]
+  );
+  return result.rows[0];
+}
+
+// kicks a member back to the pending queue, unassigned from their connector
+async function unassignConnector(memberId) {
+  const result = await pool.query(
+    `UPDATE members
+     SET assigned_to = NULL, connection_status = 'pending', updated_at = CURRENT_DATE
+     WHERE id = $1
+     RETURNING id, first_name, last_name, assigned_to, connection_status`,
+    [memberId]
+  );
+  return result.rows[0];
+}
+
+// drops someone from the Connect pipeline entirely (didn't continue)
+async function markConnectionRemoved(memberId) {
+  const result = await pool.query(
+    `UPDATE members
+     SET assigned_to = NULL, connection_status = 'removed', updated_at = CURRENT_DATE
+     WHERE id = $1
+     RETURNING id, first_name, last_name, assigned_to, connection_status`,
+    [memberId]
   );
   return result.rows[0];
 }
@@ -227,6 +321,10 @@ module.exports = {
   setMemberStatus,
   assignMentor,
   unassignMentor,
+  joinCareGroup,
+  assignConnector,
+  unassignConnector,
+  markConnectionRemoved,
   unassignAllMenteesOfMentor,
   findPhoneConflict,
 };
