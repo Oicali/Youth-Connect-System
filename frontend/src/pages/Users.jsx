@@ -34,6 +34,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -65,7 +66,7 @@ export default function Users() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const limit = 25;
+  const limit = 15;
 
   const { showError } = useErrorModal();
   const { runWithLoading } = useLoadingModal();
@@ -74,9 +75,7 @@ export default function Users() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const { users, total } = await runWithLoading("Searching users...", () =>
-        fetchUsers({ search, role, status, page, limit })
-      );
+      const { users, total } = await fetchUsers({ search, role, status, page, limit });
       setUsers(users);
       setTotal(total);
     } catch (err) {
@@ -241,14 +240,22 @@ export default function Users() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center text-muted-foreground"
-                >
-                  Loading...
-                </TableCell>
-              </TableRow>
+              Array.from({ length: limit }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <TableCell className="pl-4"><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="pr-4">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : users.length === 0 ? (
               <TableRow>
                 <TableCell

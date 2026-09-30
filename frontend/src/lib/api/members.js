@@ -1,7 +1,7 @@
 // frontend/src/lib/api/members.js
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function fetchMembers({ search, role, gender, connectionStatus, addedYear, addedMonth, page = 1, limit = 25 } = {}) {
+export async function fetchMembers({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 25 } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (role && role !== "all") {
@@ -9,8 +9,10 @@ export async function fetchMembers({ search, role, gender, connectionStatus, add
   }
   if (gender && gender !== "all") params.set("gender", gender);
   if (connectionStatus && connectionStatus !== "all") params.set("connectionStatus", connectionStatus);
+  if (hasAssigned !== undefined) params.set("hasAssigned", hasAssigned);
   if (addedYear) params.set("addedYear", addedYear);
   if (addedMonth) params.set("addedMonth", addedMonth);
+  if (sort) params.set("sort", sort);
   params.set("page", page);
   params.set("limit", limit);
 

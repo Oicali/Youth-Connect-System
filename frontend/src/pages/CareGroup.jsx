@@ -8,7 +8,7 @@ import { fetchMembers, setMemberStatus } from "@/lib/api/members";
 import { AddMemberModal } from "@/components/AddMemberModal";
 import { EditMemberModal } from "@/components/EditMemberModal";
 import { ArchiveMembersModal } from "@/components/ArchiveMembersModal";
-import { useLoadingModal } from "@/context/LoadingModalContext";
+
 import { useErrorModal } from "@/context/ErrorModalContext";
 import {
   AlertDialog,
@@ -101,8 +101,8 @@ export default function CareGroup() {
   const [pendingMenteeStatus, setPendingMenteeStatus] = useState("all");
   const [menteeStatus, setMenteeStatus] = useState("all");
 
+  // error modal only: table loading is now shown via skeleton rows, not a modal
   const { showError } = useErrorModal();
-  const { runWithLoading } = useLoadingModal();
   const [editingMember, setEditingMember] = useState(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -138,17 +138,17 @@ export default function CareGroup() {
   const loadMembers = useCallback(async () => {
     setLoading(true);
     try {
-      const { members, total } = await runWithLoading(
-        "Searching members...",
-        () =>
-          fetchMembers({
-            search,
-            role: effectiveRole,
-            gender,
-            page,
-            limit: LIMIT,
-          }),
-      );
+      // fetch directly: the `loading` state now drives the skeleton rows
+      const { members, total } = await fetchMembers({
+        search,
+        role: effectiveRole,
+        gender,
+        // Members tab: unmentored people surface first (need attention), then
+        // most recently updated. Mentors tab keeps the default status ordering.
+        sort: isMenteesTab ? "no_mentor_first_updated" : undefined,
+        page,
+        limit: LIMIT,
+      });
       setMembers(members);
       setTotal(total);
     } catch (err) {
@@ -347,14 +347,28 @@ export default function CareGroup() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={colSpan}
-                  className="text-center text-muted-foreground"
-                >
-                  Loading...
-                </TableCell>
-              </TableRow>
+              // skeleton rows: one cell per column so the layout doesn't shift when data arrives
+              // one skeleton row per page slot, tied to LIMIT so it can't drift out of sync
+              Array.from({ length: LIMIT }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  {Array.from({ length: colSpan }).map((_, j) => (
+                    <TableCell
+                      key={j}
+                      className={
+                        j === 0 ? "pl-4" : j === colSpan - 1 ? "pr-4" : ""
+                      }
+                    >
+                      <div
+                        className={`h-4 animate-pulse rounded bg-muted ${
+                          j === colSpan - 1
+                            ? "ml-auto w-16"
+                            : "w-full max-w-[120px]"
+                        }`}
+                      />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : members.length === 0 ? (
               <TableRow>
                 <TableCell

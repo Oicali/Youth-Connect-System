@@ -22,7 +22,7 @@ async function findById(memberId) {
   return result.rows[0] || null;
 }
 
-async function findAll({ search, role, gender, connectionStatus, addedYear, addedMonth, page = 1, limit = 15 } = {}) {
+async function findAll({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 15 } = {}) {
   const conditions = [];
   const values = [];
   let i = 1;
@@ -67,17 +67,27 @@ async function findAll({ search, role, gender, connectionStatus, addedYear, adde
 }
 
   if (connectionStatus) {
-    // "any" = still in the Connect pipeline (pending or assigned), as opposed to
-    // NULL which means never entered it or already resolved into a care group.
-    // Distinct from omitting the param entirely, which callers like CareGroup
-    // rely on to mean "don't filter on this column at all".
+    // "any" = has ANY connection_status set (pending/assigned/removed) — as opposed
+    // to NULL, meaning never entered the pipeline. "active" = still actively in the
+    // pipeline (pending or assigned only) — excludes NULL and 'removed'. This is what
+    // Connect now uses since pending/assigned aren't separate tabs anymore.
     if (connectionStatus === "any") {
       conditions.push(`m.connection_status IS NOT NULL`);
+    } else if (connectionStatus === "active") {
+      conditions.push(`m.connection_status = ANY($${i}::text[])`);
+      values.push(["pending", "assigned"]);
+      i++;
     } else {
       conditions.push(`m.connection_status = $${i}`);
       values.push(connectionStatus);
       i++;
     }
+  }
+
+  if (hasAssigned === "true") {
+    conditions.push(`m.assigned_to IS NOT NULL`);
+  } else if (hasAssigned === "false") {
+    conditions.push(`m.assigned_to IS NULL`);
   }
 
     if (addedYear) {
@@ -95,6 +105,23 @@ async function findAll({ search, role, gender, connectionStatus, addedYear, adde
   const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const offset = (page - 1) * limit;
 
+  // sort presets — default (status-priority) is what CareGroup's Mentors tab still
+  // implicitly relies on; the other two are explicit opt-ins from specific pages
+  const ORDER_CLAUSES = {
+    no_mentor_first_updated: `(m.mentor_id IS NOT NULL) ASC, m.updated_at DESC, m.last_name ASC, m.first_name ASC`,
+    no_assigned_first_added: `(m.assigned_to IS NOT NULL) ASC, m.added_at ASC, m.last_name ASC, m.first_name ASC`,
+  };
+  const defaultOrderClause = `
+       (m.mentor_id IS NOT NULL) ASC,
+       CASE
+         WHEN m.member_status = 'potential mentor' THEN 0
+         WHEN m.member_status = 'mentee' THEN 1
+         WHEN m.member_status = 'mentor' AND m.mentor_id IS NOT NULL THEN 2
+         ELSE 3
+       END,
+       m.last_name ASC, m.first_name ASC`;
+  const orderClause = ORDER_CLAUSES[sort] || defaultOrderClause;
+
   const rowsResult = await pool.query(
     `SELECT ${MEMBER_COLUMNS},
             COUNT(mentee.id) AS mentee_count,
@@ -109,15 +136,7 @@ async function findAll({ search, role, gender, connectionStatus, addedYear, adde
      LEFT JOIN members connector ON m.assigned_to = connector.id
      ${whereClause}
      GROUP BY m.id, mentor.first_name, mentor.last_name, connector.first_name, connector.last_name
-     ORDER BY
-       (m.mentor_id IS NOT NULL) ASC,
-       CASE
-         WHEN m.member_status = 'potential mentor' THEN 0
-         WHEN m.member_status = 'mentee' THEN 1
-         WHEN m.member_status = 'mentor' AND m.mentor_id IS NOT NULL THEN 2
-         ELSE 3
-       END,
-       m.last_name ASC, m.first_name ASC
+     ORDER BY ${orderClause}
      LIMIT $${i} OFFSET $${i + 1}`,
     [...values, limit, offset]
   );

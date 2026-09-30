@@ -7,7 +7,6 @@ import { AddConnectMemberModal } from "@/components/AddConnectMemberModal";
 import { EditConnectMemberModal } from "@/components/EditConnectMemberModal";
 import { JoinCareGroupModal } from "@/components/JoinCareGroupModal";
 import { ArchiveConnectMembersModal } from "@/components/ArchiveConnectMembersModal";
-import { useLoadingModal } from "@/context/LoadingModalContext";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
@@ -18,13 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-
-const TABS = [
-  { key: "pending", label: "Pending", connectionStatus: "pending" },
-  { key: "assigned", label: "Assigned", connectionStatus: "assigned" },
-];
+import { Skeleton } from "@/components/ui/skeleton";
 
 const GENDER_LABELS = { all: "All genders", male: "Male", female: "Female" };
+const ASSIGNED_LABELS = { all: "All", yes: "Assigned", no: "Not assigned" };
 
 const MONTH_LABELS = {
   all: "All months", 1: "January", 2: "February", 3: "March", 4: "April",
@@ -44,7 +40,6 @@ const formatDate = (dateStr) => {
 const LIMIT = 15;
 
 export default function Connect() {
-  const [activeTab, setActiveTab] = useState("pending");
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -54,13 +49,14 @@ export default function Connect() {
   const [search, setSearch] = useState("");
   const [pendingGender, setPendingGender] = useState("all");
   const [gender, setGender] = useState("all");
+  const [pendingAssigned, setPendingAssigned] = useState("all");
+  const [assigned, setAssigned] = useState("all");
   const [pendingMonth, setPendingMonth] = useState("all");
   const [month, setMonth] = useState("all");
   const [pendingYear, setPendingYear] = useState("all");
   const [year, setYear] = useState("all");
 
   const { showError } = useErrorModal();
-  const { runWithLoading } = useLoadingModal();
 
   const [addOpen, setAddOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -68,23 +64,23 @@ export default function Connect() {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
 
-  const activeConnectionStatus = TABS.find((t) => t.key === activeTab)?.connectionStatus;
-
   const loadMembers = useCallback(async () => {
     setLoading(true);
     try {
-      const { members, total } = await runWithLoading(
-        "Searching Connect list...",
-        () => fetchMembers({
-          search,
-          gender,
-          connectionStatus: activeConnectionStatus,
-          addedMonth: month !== "all" ? month : undefined,
-          addedYear: year !== "all" ? year : undefined,
-          page,
-          limit: LIMIT,
-        }),
-      );
+      const { members, total } = await fetchMembers({
+        search,
+        gender,
+        // "active" = still in the Connect pipeline (pending or assigned) — excludes
+        // full members (connection_status NULL) and archived ones (removed), which
+        // ArchiveConnectMembersModal handles separately
+        connectionStatus: "active",
+        hasAssigned: assigned === "yes" ? "true" : assigned === "no" ? "false" : undefined,
+        addedMonth: month !== "all" ? month : undefined,
+        addedYear: year !== "all" ? year : undefined,
+        sort: "no_assigned_first_added",
+        page,
+        limit: LIMIT,
+      });
       setMembers(members);
       setTotal(total);
     } catch (err) {
@@ -92,21 +88,14 @@ export default function Connect() {
     } finally {
       setLoading(false);
     }
-  }, [search, gender, activeConnectionStatus, month, year, page]);
+  }, [search, gender, assigned, month, year, page]);
 
   useEffect(() => { loadMembers(); }, [loadMembers]);
-
-  useEffect(() => {
-    setSearchInput(""); setSearch("");
-    setPendingGender("all"); setGender("all");
-    setPendingMonth("all"); setMonth("all");
-    setPendingYear("all"); setYear("all");
-    setPage(1);
-  }, [activeTab]);
 
   const handleApplyFilters = () => {
     setSearch(searchInput.trim());
     setGender(pendingGender);
+    setAssigned(pendingAssigned);
     setMonth(pendingMonth);
     setYear(pendingYear);
     setPage(1);
@@ -115,6 +104,7 @@ export default function Connect() {
   const handleResetFilters = () => {
     setSearchInput(""); setSearch("");
     setPendingGender("all"); setGender("all");
+    setPendingAssigned("all"); setAssigned("all");
     setPendingMonth("all"); setMonth("all");
     setPendingYear("all"); setYear("all");
     setPage(1);
@@ -127,12 +117,14 @@ export default function Connect() {
   const filtersDirty =
     searchInput.trim() !== search ||
     pendingGender !== gender ||
+    pendingAssigned !== assigned ||
     pendingMonth !== month ||
     pendingYear !== year;
 
   const filtersAtDefault =
     !searchInput && !search &&
     pendingGender === "all" && gender === "all" &&
+    pendingAssigned === "all" && assigned === "all" &&
     pendingMonth === "all" && month === "all" &&
     pendingYear === "all" && year === "all";
 
@@ -166,22 +158,6 @@ export default function Connect() {
         </div>
       </div>
 
-      <div className="flex gap-2 border-b">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2 ${
-              activeTab === tab.key
-                ? "bg-primary/10 border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <div className="rounded-xl border bg-card p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-[200px] flex-1 flex-col gap-1">
@@ -205,6 +181,20 @@ export default function Connect() {
                 <SelectItem value="all">All genders</SelectItem>
                 <SelectItem value="male">Male</SelectItem>
                 <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:flex-none">
+            <span className="px-1 text-xs text-muted-foreground">Assigned</span>
+            <Select value={pendingAssigned} onValueChange={setPendingAssigned}>
+              <SelectTrigger className="w-full bg-card sm:w-36">
+                <SelectValue placeholder="Assigned">{ASSIGNED_LABELS[pendingAssigned]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="yes">Assigned</SelectItem>
+                <SelectItem value="no">Not assigned</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -265,9 +255,25 @@ export default function Connect() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+              Array.from({ length: LIMIT }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <TableCell className="pl-4"><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="pr-4">
+                    <div className="flex justify-end gap-1">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : members.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No one {activeTab} right now</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No one matches these filters right now</TableCell></TableRow>
             ) : (
               members.map((m) => (
                 <TableRow key={m.id}>

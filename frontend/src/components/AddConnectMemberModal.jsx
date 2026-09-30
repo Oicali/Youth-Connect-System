@@ -6,13 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { addConnectMemberSchema } from "@/lib/validations/member";
-import { createMember, assignConnector, fetchMembers, setMemberStatus } from "@/lib/api/members";
+import { createMember, assignConnector, fetchMembers, setMemberStatus, unassignConnector } from "@/lib/api/members";
 import { AlertTriangle } from "lucide-react";
 import { useErrorModal } from "@/context/ErrorModalContext";
+import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -85,6 +87,23 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
     }
   };
 
+  // for someone who was only ever a Connect first-timer (never a full member) and
+  // dropped out of follow-up — unassignConnector sets connection_status back to
+  // 'pending' and clears assigned_to, which is exactly "reopen as a fresh lead"
+  const handleResumeFollowUp = async (match) => {
+    setRestoringId(match.id);
+    try {
+      await unassignConnector(match.id);
+      toast.success(`${match.first_name} moved back to pending follow-up`);
+      onSaved();
+      onOpenChange(false);
+    } catch (err) {
+      showError(err.message, "Could Not Resume Follow-Up");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   const onSubmit = async (data) => {
     try {
       // first-timers start with no member_status at all (NULL) — they aren't a
@@ -117,23 +136,43 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
                 Possible existing member{duplicateMatches.length > 1 ? "s" : ""} found:
               </div>
               <ul className="space-y-1.5">
-                {duplicateMatches.map((match) => (
-                  <li key={match.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span>• {match.first_name} {match.last_name}</span>
-                    {match.member_status === "removed" && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRestoreAsMember(match)}
-                        disabled={restoringId === match.id}
-                        className="border-success text-success hover:bg-success hover:text-success-foreground"
-                      >
-                        Restore instead
-                      </Button>
-                    )}
-                  </li>
-                ))}
+                {duplicateMatches.map((match) => {
+                  const { label, tone } = getDuplicateStatusLabel(match);
+                  return (
+                    <li key={match.id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="flex items-center gap-2">
+                        • {match.first_name} {match.last_name}
+                        <Badge variant="secondary" className={tone === "destructive" ? "text-destructive" : "text-muted-foreground"}>
+                          {label}
+                        </Badge>
+                      </span>
+                      {match.member_status === "removed" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRestoreAsMember(match)}
+                          disabled={restoringId === match.id}
+                          className="border-success text-success hover:bg-success hover:text-success-foreground"
+                        >
+                          Restore instead
+                        </Button>
+                      )}
+                      {match.member_status !== "removed" && match.connection_status === "removed" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResumeFollowUp(match)}
+                          disabled={restoringId === match.id}
+                          className="border-success text-success hover:bg-success hover:text-success-foreground"
+                        >
+                          Resume follow-up
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
