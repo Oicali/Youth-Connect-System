@@ -55,7 +55,8 @@ export default function Login() {
       navigate("/dashboard");
     } catch (err) {
       if (err.type === "network" || err.type === "server") {
-        showError(err.message, err.type === "network" ? "Server Error" : "Network Error");
+        console.log(err.type);
+        showError(err.message, err.type === "network" ? "Network Error" : "Server Error");
       } else {
         setError("root", { message: err.message });
       }

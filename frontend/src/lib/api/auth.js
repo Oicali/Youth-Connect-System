@@ -2,7 +2,7 @@
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function loginUser({ username, password }) {
+export async function loginUser({ username, password, rememberMe }) {
   let res;
 
   try {
@@ -10,14 +10,14 @@ export async function loginUser({ username, password }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, rememberMe }),
     });
     console.log("Look at this:", res);
   } catch (networkErr) {
     console.error("Network error:", networkErr);
     const err = new Error(
       navigator.onLine
-        ? "Cannot reach the server. Is the backend running?"
+        ? "Cannot reach the server. Please try again later."
         : "You appear to be offline. Check your internet connection.",
       { cause: networkErr }
     );

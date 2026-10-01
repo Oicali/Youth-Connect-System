@@ -1,7 +1,8 @@
 // frontend/src/lib/api/members.js
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function fetchMembers({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 25 } = {}) {
+// signal is optional, so existing callers (modals) keep working without it
+export async function fetchMembers({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 15, signal } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (role && role !== "all") {
@@ -16,8 +17,10 @@ export async function fetchMembers({ search, role, gender, connectionStatus, has
   params.set("page", page);
   params.set("limit", limit);
 
+  // passing the signal lets the caller cancel this request mid-flight
   const res = await fetch(`${API_URL}/members?${params.toString()}`, {
     credentials: "include",
+    signal,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);

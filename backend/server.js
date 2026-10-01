@@ -32,7 +32,7 @@ app.use(session({
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // only HTTPS in prod
     sameSite: "lax",
-    maxAge: 1000 * 60 * 60 * 24, // 1 day
+
   },
 }));
 

@@ -1,6 +1,6 @@
 // frontend/src/pages/CareGroup.jsx
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Pencil, Trash2, Search as SearchIcon, Undo2, Users, User, UserPlus, Archive } from "lucide-react";
 import { toast } from "sonner";
 
@@ -135,10 +135,17 @@ export default function CareGroup() {
     [isMenteesTab, menteeStatus, tabDefaultStatus],
   );
 
+    // holds the controller of the in-flight request so the next call can cancel it
+  const abortRef = useRef(null);
+
   const loadMembers = useCallback(async () => {
+    // cancel whatever is still pending, then start a fresh controller for this call
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
-      // fetch directly: the `loading` state now drives the skeleton rows
       const { members, total } = await fetchMembers({
         search,
         role: effectiveRole,
@@ -148,15 +155,22 @@ export default function CareGroup() {
         sort: isMenteesTab ? "no_mentor_first_updated" : undefined,
         page,
         limit: LIMIT,
+        signal: controller.signal,
       });
       setMembers(members);
       setTotal(total);
     } catch (err) {
+      // a cancelled request is intentional, not a failure: no error modal
+      if (err.name === "AbortError") return;
       showError(err.message, "Could Not Load Members");
     } finally {
-      setLoading(false);
+      // only the newest request may turn the skeleton off
+      if (abortRef.current === controller) setLoading(false);
     }
   }, [search, effectiveRole, gender, isMenteesTab, page]);
+
+  // cancel any pending request when leaving the page
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     loadMembers();
@@ -358,13 +372,15 @@ export default function CareGroup() {
                         j === 0 ? "pl-4" : j === colSpan - 1 ? "pr-4" : ""
                       }
                     >
-                      <div
-                        className={`h-4 animate-pulse rounded bg-muted ${
-                          j === colSpan - 1
-                            ? "ml-auto w-16"
-                            : "w-full max-w-[120px]"
-                        }`}
-                      />
+                    
+                      {j === colSpan - 1 ? (
+                        <div className="flex justify-end gap-2">
+                          <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
+                          <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
+                        </div>
+                      ) : (
+                        <div className="h-4 w-full max-w-[120px] animate-pulse rounded bg-muted" />
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>

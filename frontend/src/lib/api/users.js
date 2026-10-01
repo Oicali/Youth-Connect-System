@@ -2,7 +2,8 @@
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function fetchUsers({ search, role, status, page = 1, limit = 15 } = {}) {
+// signal is optional, so any caller that doesn't pass one keeps working
+export async function fetchUsers({ search, role, status, page = 1, limit = 15, signal } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (role && role !== "all") params.set("role", role);
@@ -10,8 +11,10 @@ export async function fetchUsers({ search, role, status, page = 1, limit = 15 } 
   params.set("page", page);
   params.set("limit", limit);
 
+  // passing the signal lets the page cancel this request mid-flight
   const res = await fetch(`${API_URL}/users?${params.toString()}`, {
     credentials: "include",
+    signal,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);

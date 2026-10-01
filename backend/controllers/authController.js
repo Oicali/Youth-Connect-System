@@ -4,8 +4,14 @@ const authService = require("../services/authService");
 
 const router = express.Router();
 
+// how long a "remember me" login lasts (7 days)
+const REMEMBER_ME_MS = 1000 * 60 * 60 * 24 * 7;
+// const REMEMBER_ME_MS = 1000 * 60;
+
+
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  // read rememberMe from the request
+  const { username, password, rememberMe } = req.body;
 
   if (!username || !password) {
     return res
@@ -15,8 +21,30 @@ router.post("/login", async (req, res) => {
 
   try {
     const sessionUser = await authService.authenticate(username, password);
-    req.session.user = sessionUser;
-    res.json({ user: sessionUser });
+
+    // new session ID on login (prevents session fixation)
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error("Session regenerate error:", regenErr);
+        return res.status(500).json({ message: "Something went wrong. Please try again." });
+      }
+
+      req.session.user = sessionUser;
+
+      // strict === true so only a real boolean true extends the session
+      if (rememberMe === true) {
+        req.session.cookie.maxAge = REMEMBER_ME_MS;
+      }
+
+      // save to Postgres before responding so the cookie is valid immediately
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error("Session save error:", saveErr);
+          return res.status(500).json({ message: "Something went wrong. Please try again." });
+        }
+        res.json({ user: sessionUser });
+      });
+    });
   } catch (err) {
     if (err.status) {
       return res.status(err.status).json({ message: err.message });

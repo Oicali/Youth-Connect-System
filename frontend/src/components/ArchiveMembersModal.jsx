@@ -108,6 +108,8 @@ export function ArchiveMembersModal({ open, onOpenChange, onRestored }) {
           className="mb-2"
         />
 
+        {/* fixed-height scroll area: modal keeps its size for skeleton, empty, and data states */}
+        <div className="h-[360px] overflow-y-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -121,14 +123,26 @@ export function ArchiveMembersModal({ open, onOpenChange, onRestored }) {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Loading...
-                </TableCell>
-              </TableRow>
+              // skeleton rows: 4 text cells + the last cell mimics the Select and restore button
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className="h-4 w-full max-w-[120px] animate-pulse rounded bg-muted" />
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="h-9 w-40 animate-pulse rounded-md bg-muted" />
+                      <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             ) : members.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                {/* h-[280px] roughly fills the 360px scroll box minus the header, align-middle centers vertically */}
+                <TableCell colSpan={5} className="h-[280px] text-center align-middle text-muted-foreground">
                   No archived members
                 </TableCell>
               </TableRow>
@@ -173,6 +187,7 @@ export function ArchiveMembersModal({ open, onOpenChange, onRestored }) {
             )}
           </TableBody>
         </Table>
+        </div>
       </DialogContent>
     </Dialog>
   );
