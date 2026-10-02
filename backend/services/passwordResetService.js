@@ -5,6 +5,7 @@ const userRepository = require("../repositories/userRepository");
 const passwordResetRepository = require("../repositories/passwordResetRepository");
 const sessionRepository = require("../repositories/sessionRepository");
 const { sendEmail } = require("../utils/mailer");
+const { resetPasswordEmail } = require("../utils/emailTemplates");
 
 const TOKEN_TTL_MINUTES = 30; // how long a reset link stays valid
 const SALT_ROUNDS = 10; // must match what you use when creating users
@@ -31,18 +32,14 @@ async function requestPasswordReset(email) {
 
   const link = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
 
-  await sendEmail({
-    to: user.email,
-    subject: "Reset your password",
-    text:
-      `We received a request to reset your password.\n\n` +
-      `Open this link to choose a new one (valid for ${TOKEN_TTL_MINUTES} minutes):\n${link}\n\n` +
-      `If you didn't request this, you can ignore this email.`,
-    html:
-      `<p>We received a request to reset your password.</p>` +
-      `<p><a href="${link}">Choose a new password</a> (valid for ${TOKEN_TTL_MINUTES} minutes).</p>` +
-      `<p>If you didn't request this, you can ignore this email.</p>`,
+  // build the branded email, with a plain-text fallback
+  const { subject, text, html } = resetPasswordEmail({
+    firstName: user.first_name,
+    link,
+    expiresInMinutes: TOKEN_TTL_MINUTES,
   });
+
+  await sendEmail({ to: user.email, subject, text, html });
 }
 
 // step 2: validate the token, save the new password, log the user out everywhere

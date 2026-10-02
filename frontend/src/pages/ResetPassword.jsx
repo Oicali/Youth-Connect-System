@@ -42,10 +42,7 @@ export default function ResetPassword() {
       setDone(true);
     } catch (err) {
       if (err.type === "network" || err.type === "server") {
-        showError(
-          err.message,
-          err.type === "network" ? "Network Error" : "Server Error",
-        );
+        showError(err.message, "Something Went Wrong");
       } else {
         setError("root", { message: err.message });
       }
