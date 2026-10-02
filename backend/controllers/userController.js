@@ -50,7 +50,8 @@ router.get("/", requireAuth, requireRole(["admin"]), async (req, res) => {
     const { rows, total } = await userService.listUsers({
       search, role, status,
       page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 15,
+      // cap page size so ?limit=100000 can't dump the whole table
+      limit: limit ? Math.min(Number(limit), 100) : 15,
     });
     res.json({ users: rows, total });
   } catch (err) {

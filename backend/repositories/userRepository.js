@@ -167,8 +167,20 @@ async function findPhoneConflict(phone, altPhone, excludeUserId = null) {
   return result.rows;
 }
 
+// finds a user by email, ignoring letter case (used by forgot-password)
+async function findByEmail(email) {
+  const result = await pool.query(
+    `SELECT user_id, email, first_name, status
+     FROM users
+     WHERE LOWER(email) = LOWER($1)`,
+    [email]
+  );
+  return result.rows[0] || null;
+}
+
 module.exports = {
   findByUsername,
+  findByEmail,
   findById,
   updateProfile,
   findPasswordById,

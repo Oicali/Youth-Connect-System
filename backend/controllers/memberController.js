@@ -15,7 +15,8 @@ router.get("/", requireAuth, async (req, res) => {
       addedYear: addedYear ? Number(addedYear) : undefined,
       addedMonth: addedMonth ? Number(addedMonth) : undefined,
       page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 15,
+      // cap page size so ?limit=100000 can't dump the whole table
+      limit: limit ? Math.min(Number(limit), 100) : 15,
     });
     res.json({ members: rows, total });
   } catch (err) {
