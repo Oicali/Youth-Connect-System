@@ -176,7 +176,10 @@ export default function CareGroup() {
     loadMembers();
   }, [loadMembers]);
 
-  useEffect(() => {
+  // tab, filters, and page change in one batch, so only one fetch fires
+  const handleTabChange = (key) => {
+    if (key === activeTab) return; // clicking the active tab shouldn't wipe filters
+    setActiveTab(key);
     setSearchInput("");
     setSearch("");
     setPendingGender("all");
@@ -184,7 +187,7 @@ export default function CareGroup() {
     setPendingMenteeStatus("all");
     setMenteeStatus("all");
     setPage(1);
-  }, [activeTab]);
+  };
 
   const handleApplyFilters = () => {
     setSearch(searchInput.trim());
@@ -250,7 +253,7 @@ export default function CareGroup() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors -mb-px border-b-2 ${
               activeTab === tab.key
                 ? "bg-primary/10 border-primary text-primary"

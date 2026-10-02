@@ -1,6 +1,6 @@
 // frontend\src\pages\Users.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Pencil, Trash2, RotateCcw, Search as SearchIcon, Undo2, Archive } from "lucide-react";
 
 import { fetchUsers, setUserStatus } from "@/lib/api/users";
@@ -72,39 +72,52 @@ export default function Users() {
   const { runWithLoading } = useLoadingModal();
   const { user: currentUser } = useAuth();
 
+  // holds the controller of the request currently in flight
+  const abortRef = useRef(null);
+
   const loadUsers = useCallback(async () => {
+    // cancel the previous request so only the latest one can update the table
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
-      const { users, total } = await fetchUsers({ search, role, status, page, limit });
+      const { users, total } = await fetchUsers({
+        search, role, status, page, limit,
+        signal: controller.signal,
+      });
       setUsers(users);
       setTotal(total);
     } catch (err) {
+      if (err.name === "AbortError") return; // cancelled on purpose, not a real error
       showError(err.message, "Could Not Load Users");
     } finally {
-      setLoading(false);
+      // an aborted request must not clear loading, since a newer one is still running
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [search, role, status, page]);
 
   // fetch only runs when search/role/status are committed (via Apply/Enter) or page changes
   useEffect(() => {
     loadUsers();
+    return () => abortRef.current?.abort(); // cancel on unmount
   }, [loadUsers]);
 
-  // reset to page 1 whenever a committed filter changes, so you don't get stranded on an empty page
-  useEffect(() => {
-    setPage(1);
-  }, [search, role]);
-
+  // filters and page are set together, so only one fetch fires
   const handleApplyFilters = () => {
     setSearch(searchInput.trim());
     setRole(pendingRole);
+    setPage(1);
   };
 
+  // clear filters and return to page 1 in the same update
   const handleResetFilters = () => {
     setSearchInput("");
     setSearch("");
     setPendingRole("all");
     setRole("all");
+    setPage(1);
   };
 
   const handleSearchKeyDown = (e) => {

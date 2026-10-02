@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Search as SearchIcon, Undo2, UserPlus, Home, Trash2, Archive, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,7 +64,15 @@ export default function Connect() {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
 
+  // holds the controller of the in-flight request so the next call can cancel it
+  const abortRef = useRef(null);
+
   const loadMembers = useCallback(async () => {
+    // cancel whatever is still pending, then start a fresh controller for this call
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
       const { members, total } = await fetchMembers({
@@ -80,15 +88,22 @@ export default function Connect() {
         sort: "no_assigned_first_added",
         page,
         limit: LIMIT,
+        signal: controller.signal,
       });
       setMembers(members);
       setTotal(total);
     } catch (err) {
+      // a cancelled request is intentional, not a failure: no error modal
+      if (err.name === "AbortError") return;
       showError(err.message, "Could Not Load Connect List");
     } finally {
-      setLoading(false);
+      // only the newest request may turn the skeleton off
+      if (abortRef.current === controller) setLoading(false);
     }
   }, [search, gender, assigned, month, year, page]);
+
+  // cancel any pending request when leaving the page
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => { loadMembers(); }, [loadMembers]);
 
