@@ -14,13 +14,16 @@ import {
   setMemberStatus,
   unassignConnector,
 } from "@/lib/api/members";
-import { AlertTriangle, UserPlus, ExternalLink } from "lucide-react";
+import { AlertTriangle, UserPlus, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, parse } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -79,14 +82,14 @@ const toSocialUrl = (raw, hosts) => {
 
 // bordered icon button that sits inside an input: real link when valid, dimmed and unclickable when not
 const ProfileLinkButton = ({ url, label }) => {
-  const base = "absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md border border-input";
+  const base = "absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md";
   return url ? (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Open ${label} profile`}
-      className={`${base} text-muted-foreground hover:border-primary hover:text-primary`}
+      className={`${base} text-muted-foreground hover:text-primary`}
     >
       <ExternalLink size={14} />
     </a>
@@ -99,6 +102,8 @@ const ProfileLinkButton = ({ url, label }) => {
 
 export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
+  const [birthOpen, setBirthOpen] = useState(false); // birth date popover
+  const [addedOpen, setAddedOpen] = useState(false); // date added popover
   // today in PH time as YYYY-MM-DD, used as the max for the date input
   const phToday = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const [connectorId, setConnectorId] = useState("");
@@ -414,7 +419,40 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
             </div>
             <div className="space-y-2">
               <Label>Birth date</Label>
-              <Input type="date" {...register("birth_date")} />
+              {/* same picker as Profile's birthdate */}
+              <Popover open={birthOpen} onOpenChange={setBirthOpen}>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex h-9 w-full flex-row-reverse items-center justify-between rounded-md border border-input bg-transparent px-3 font-normal shadow-xs hover:bg-transparent dark:bg-input/30"
+                    />
+                  }
+                >
+                  <CalendarIcon size={16} className="ml-2 shrink-0 text-muted-foreground" />
+                  <span className="truncate">
+                    {watch("birth_date")
+                      ? format(parse(watch("birth_date"), "yyyy-MM-dd", new Date()), "MMMM d, yyyy")
+                      : "Select date"}
+                  </span>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={watch("birth_date") ? parse(watch("birth_date"), "yyyy-MM-dd", new Date()) : undefined}
+                    onSelect={(date) => {
+                      if (date) setValue("birth_date", format(date, "yyyy-MM-dd"), { shouldDirty: true });
+                      setBirthOpen(false);
+                    }}
+                    captionLayout="dropdown"
+                    fromYear={1950}
+                    toYear={new Date().getFullYear()}
+                    disabled={{ after: new Date() }}
+                    defaultMonth={watch("birth_date") ? parse(watch("birth_date"), "yyyy-MM-dd", new Date()) : undefined}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Address</Label>
@@ -476,7 +514,40 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
             {/* optional backdate; empty = today (PH) on the server */}
             <div className="space-y-2">
               <Label>Date added (optional)</Label>
-              <Input type="date" max={phToday} {...register("added_at")} />
+              {/* same picker as Profile; can't pick a future date */}
+              <Popover open={addedOpen} onOpenChange={setAddedOpen}>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex h-9 w-full flex-row-reverse items-center justify-between rounded-md border border-input bg-transparent px-3 font-normal shadow-xs hover:bg-transparent dark:bg-input/30"
+                    />
+                  }
+                >
+                  <CalendarIcon size={16} className="ml-2 shrink-0 text-muted-foreground" />
+                  <span className="truncate">
+                    {watch("added_at")
+                      ? format(parse(watch("added_at"), "yyyy-MM-dd", new Date()), "MMMM d, yyyy")
+                      : "Select date"}
+                  </span>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={watch("added_at") ? parse(watch("added_at"), "yyyy-MM-dd", new Date()) : undefined}
+                    onSelect={(date) => {
+                      if (date) setValue("added_at", format(date, "yyyy-MM-dd"), { shouldDirty: true, shouldValidate: true });
+                      setAddedOpen(false);
+                    }}
+                    captionLayout="dropdown"
+                    fromYear={new Date().getFullYear() - 10}
+                    toYear={new Date().getFullYear()}
+                    disabled={{ after: new Date() }}
+                    defaultMonth={watch("added_at") ? parse(watch("added_at"), "yyyy-MM-dd", new Date()) : undefined}
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.added_at && (
                 <p className="text-sm text-destructive">
                   {errors.added_at.message}
