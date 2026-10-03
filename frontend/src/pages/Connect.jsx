@@ -393,13 +393,18 @@ export default function Connect() {
               </div>
               <div className="space-y-1.5 text-left">
                 <DialogTitle>Mark as removed?</DialogTitle>
+                {/* header stays one short line, details live in the body below */}
                 <DialogDescription>
                   <span className="font-medium text-foreground">{removeTarget?.first_name} {removeTarget?.last_name}</span> will be dropped from the Connect pipeline.
-                  You can restore them from the Archive later.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
+
+          {/* body: same structure as the Care Group remove dialog */}
+          <div className="px-5 py-4 text-sm text-muted-foreground">
+            You can restore them from the Archive later. Restoring sends them back to pending follow-up.
+          </div>
           {/* pinned footer bar, same as the other modals */}
           <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
             <Button type="button" variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>

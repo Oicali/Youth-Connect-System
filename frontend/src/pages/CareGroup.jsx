@@ -11,15 +11,13 @@ import { ArchiveMembersModal } from "@/components/ArchiveMembersModal";
 
 import { useErrorModal } from "@/context/ErrorModalContext";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -478,23 +476,36 @@ export default function CareGroup() {
                   <TableCell className="text-muted-foreground">
                     {formatDate(m.updated_at)}
                   </TableCell>
-                  <TableCell className="flex justify-end gap-2 pr-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingMember(m)}
-                      className="bg-primary/10 hover:bg-primary/20"
-                    >
-                      <Pencil size={16} className="text-primary" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingMember(m)}
-                      className="bg-destructive/10 hover:bg-destructive/20"
-                    >
-                      <Trash2 size={16} className="text-destructive" />
-                    </Button>
+                  <TableCell className="flex justify-end gap-1 pr-4">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingMember(m)}
+                            className="bg-primary/10 hover:bg-primary/20"
+                          >
+                            <Pencil size={16} className="text-primary" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit details</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingMember(m)}
+                            className="bg-destructive/10 hover:bg-destructive/20"
+                          >
+                            <Trash2 size={16} className="text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove member</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                 </TableRow>
               ))
@@ -553,27 +564,52 @@ export default function CareGroup() {
         allowMentorAssignment
       />
 
-      <AlertDialog
-        open={!!deletingMember}
-        onOpenChange={(o) => !o && setDeletingMember(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this member?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deletingMember && Number(deletingMember.mentee_count) > 0
-                ? `${deletingMember.first_name} ${deletingMember.last_name} still has ${deletingMember.mentee_count} mentee(s) assigned. Removing them will unassign all of those mentees — their mentor field will be set back to "None." This cannot be undone automatically.`
-                : `This marks ${deletingMember?.first_name} ${deletingMember?.last_name} as removed. This can be reversed by editing their status back.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>
+      
+      <Dialog open={!!deletingMember} onOpenChange={(o) => !o && setDeletingMember(null)}>
+        {/* max-w-lg gives long warnings room to breathe */}
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="border-b border-border py-5 pl-5 pr-12"> {/* pr-12 keeps text clear of the built-in X */}
+            <div className="flex items-start gap-4">
+              {/* icon badge: destructive-tinted circle, same icon as the row's delete button */}
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 size={18} className="text-destructive" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <DialogTitle>Remove this member?</DialogTitle>
+                {/* header stays one short line, details live in the body below */}
+                <DialogDescription>
+                  <span className="font-medium text-foreground">{deletingMember?.first_name} {deletingMember?.last_name}</span> will be marked as removed.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* body: consequences get a full-width panel instead of squeezing into the header */}
+          <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
+            {Number(deletingMember?.mentee_count) > 0 && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                <p className="font-medium text-destructive">
+                  {deletingMember.mentee_count} mentee(s) will be unassigned
+                </p>
+                <p className="mt-1">
+                  Their mentor field will be set back to "None." Restoring this member later will not reassign them.
+                </p>
+              </div>
+            )}
+            <p>You can restore them from the Archive later.</p>
+          </div>
+          {/* pinned footer bar, same as the other modals */}
+          <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
+            <Button type="button" variant="outline" onClick={() => setDeletingMember(null)}>Cancel</Button>
+            <Button
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90" // red confirm for a removal, not the gold primary
+            >
               Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
