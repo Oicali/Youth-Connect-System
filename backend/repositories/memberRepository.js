@@ -155,26 +155,29 @@ async function create(fields) {
   const {
     first_name, last_name, gender, birth_date, address,
     phone_num, alt_phone, main_church, ministry,
-    member_status, connection_status, facebook, instagram,
+    member_status, connection_status, facebook, instagram, added_at,
   } = fields;
 
   const result = await pool.query(
     `INSERT INTO members
       (first_name, last_name, gender, birth_date, address, phone_num,
-       alt_phone, main_church, ministry, member_status, connection_status, facebook, instagram)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       alt_phone, main_church, ministry, member_status, connection_status, facebook, instagram, added_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+             COALESCE($14::date, (NOW() AT TIME ZONE 'Asia/Manila')::date))
      RETURNING id, first_name, last_name, member_status, connection_status, assigned_to, added_at`,
     [first_name, last_name, gender || null, birth_date || null, address || null,
      phone_num || null, alt_phone || null, main_church || null, ministry || null,
-     member_status || null, connection_status || null, facebook || null, instagram || null]
+     member_status || null, connection_status || null, facebook || null, instagram || null,
+     added_at || null]
   );
   return result.rows[0];
 }
 
+// update member; empty added_at keeps the existing value, updated_at uses PH today
 async function updateById(memberId, fields) {
   const {
     first_name, last_name, gender, birth_date, address,
-    phone_num, alt_phone, main_church, ministry, facebook, instagram,
+    phone_num, alt_phone, main_church, ministry, facebook, instagram, added_at,
   } = fields;
 
   const result = await pool.query(
@@ -182,12 +185,13 @@ async function updateById(memberId, fields) {
      SET first_name = $1, last_name = $2, gender = $3, birth_date = $4,
          address = $5, phone_num = $6, alt_phone = $7, main_church = $8,
          ministry = $9, facebook = $10, instagram = $11,
-         updated_at = CURRENT_DATE
-     WHERE id = $12
-     RETURNING id, first_name, last_name, member_status, connection_status, updated_at`,
-    // birth_date is a DATE column — Postgres rejects '' outright (unlike TEXT columns), so it needs the null fallback create() already has
-    [first_name, last_name, gender || null, birth_date || null, address, phone_num,
-     alt_phone, main_church, ministry, facebook, instagram, memberId]
+         added_at = COALESCE($12::date, added_at),
+         updated_at = (NOW() AT TIME ZONE 'Asia/Manila')::date
+     WHERE id = $13
+     RETURNING id, first_name, last_name, member_status, connection_status, updated_at, added_at`,
+    [first_name, last_name, gender || null, birth_date || null, address || null, phone_num || null,
+     alt_phone || null, main_church || null, ministry || null, facebook || null, instagram || null,
+     added_at || null, memberId]
   );
   return result.rows[0];
 }
@@ -301,6 +305,23 @@ async function findPhoneConflict(phone, altPhone, excludeMemberId = null) {
   return result.rows;
 }
 
+// partial name match on the member's OWN full name; excludeId skips the record being edited
+async function findNameMatches(term, excludeId = null) {
+  const escaped = term.replace(/[\\%_]/g, "\\$&"); // escape LIKE wildcards typed by the user
+  const result = await pool.query(
+    `SELECT ${MEMBER_COLUMNS}
+     FROM members m
+     LEFT JOIN members mentor ON m.mentor_id = mentor.id
+     LEFT JOIN members connector ON m.assigned_to = connector.id
+     WHERE (m.first_name || ' ' || m.last_name) ILIKE $1
+       AND ($3::bigint IS NULL OR m.id != $3)
+     ORDER BY (LOWER(m.first_name || ' ' || m.last_name) = LOWER($2)) DESC, m.added_at DESC
+     LIMIT 3`, // cap the warning list at 3; exact matches sort first so they're never cut
+    [`%${escaped}%`, term, excludeId]
+  );
+  return result.rows;
+}
+
 // bulk-unassigns everyone under this mentor — used when demoting a mentor away from "mentor" status
 async function unassignAllMenteesOfMentor(mentorId) {
   const result = await pool.query(
@@ -327,4 +348,5 @@ module.exports = {
   markConnectionRemoved,
   unassignAllMenteesOfMentor,
   findPhoneConflict,
+  findNameMatches,
 };

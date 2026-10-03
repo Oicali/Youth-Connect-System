@@ -4,7 +4,8 @@ const memberRepository = require("../repositories/memberRepository");
 const MEMBER_STATUSES = ["mentor", "potential mentor", "mentee", "removed"];
 
 async function checkPhoneConflicts(phone, altPhone, excludeMemberId = null) {
-  const conflicts = await memberRepository.findPhoneConflict(phone, altPhone, excludeMemberId);
+  if (!phone && !altPhone) return; // nothing to compare when both are empty
+  const conflicts = await memberRepository.findPhoneConflict(phone || null, altPhone, excludeMemberId);
   if (conflicts.length === 0) return;
 
   const conflict = conflicts[0];
@@ -12,6 +13,15 @@ async function checkPhoneConflicts(phone, altPhone, excludeMemberId = null) {
     throw { status: 409, message: "This phone number is already registered to another member", field: "phone_num" };
   }
   throw { status: 409, message: "This phone number is already registered to another member", field: "alt_phone" };
+}
+
+// server-side guard: rejects future added_at, compared as YYYY-MM-DD in PH time
+function validateAddedAt(addedAt) {
+  if (!addedAt) return;
+  const phToday = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(addedAt) || addedAt > phToday) {
+    throw { status: 400, message: "Date added cannot be in the future", field: "added_at" };
+  }
 }
 
 async function getMember(memberId) {
@@ -26,7 +36,15 @@ async function listMembers(filters) {
   return memberRepository.findAll(filters);
 }
 
+// name-only duplicate lookup; excludeId lets the edit modal skip the member being edited
+async function findDuplicates(firstName, lastName, excludeId = null) {
+  const term = `${(firstName || "").trim()} ${(lastName || "").trim()}`.trim();
+  if (term.replace(/\s/g, "").length < 2) return [];
+  return memberRepository.findNameMatches(term, excludeId);
+}
+
 async function createMember(fields) {
+  validateAddedAt(fields.added_at);
   await checkPhoneConflicts(fields.phone_num, fields.alt_phone, null);
 
   try {
@@ -40,6 +58,7 @@ async function createMember(fields) {
 }
 
 async function updateMember(memberId, fields) {
+  validateAddedAt(fields.added_at); // reject future dates before touching the DB
   await checkPhoneConflicts(fields.phone_num, fields.alt_phone, memberId);
 
   try {
@@ -147,4 +166,5 @@ module.exports = {
   assignConnector,
   unassignConnector,
   markConnectionRemoved,
+  findDuplicates,
 };

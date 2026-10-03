@@ -10,8 +10,9 @@ const memberBaseSchema = z.object({
   last_name: z.string().trim().min(1, "Last name is required").max(100),
   gender: z.string().trim().optional().or(z.literal("")),
   birth_date: z.string().optional().or(z.literal("")), // date input, no free text to trim
+  added_at: z.string().optional().or(z.literal("")), // optional backdate; empty = server decides
   address: z.string().trim().optional().or(z.literal("")),
-  phone_num: z.string().trim().min(1, "Phone number is required").max(30),
+  phone_num: z.string().trim().max(30).optional().or(z.literal("")), 
   alt_phone: z.string().trim().max(30).optional().or(z.literal("")),
   main_church: z.string().trim().max(255).optional().or(z.literal("")),
   ministry: z.string().trim().max(255).optional().or(z.literal("")),

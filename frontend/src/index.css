@@ -10,15 +10,23 @@
   --border: oklch(0.88 0.02 90);
   --input: oklch(0.83 0.02 90);
 
-  --foreground: oklch(0.22 0.02 55);        /* matched to the logo's ink, slightly warmer/browner than neutral black */
+  --foreground: oklch(
+    0.22 0.02 55
+  ); /* matched to the logo's ink, slightly warmer/browner than neutral black */
   --card-foreground: oklch(0.22 0.02 55);
   --popover-foreground: oklch(0.22 0.02 55);
   --muted-foreground: oklch(0.45 0.02 60);
 
   /* Gold, grounded in the real gradient: deep amber → bright gold */
-  --primary: oklch(0.76 0.16 74);           /* bright gold — flat UI use: buttons, active states */
-  --primary-deep: oklch(0.63 0.17 58);      /* deep amber — gradient stop, hover/active shifts toward this */
-  --primary-hover: oklch(0.71 0.165 66);    /* interpolated between the two, not just darker */
+  --primary: oklch(
+    0.76 0.16 74
+  ); /* bright gold — flat UI use: buttons, active states */
+  --primary-deep: oklch(
+    0.63 0.17 58
+  ); /* deep amber — gradient stop, hover/active shifts toward this */
+  --primary-hover: oklch(
+    0.71 0.165 66
+  ); /* interpolated between the two, not just darker */
   --primary-active: oklch(0.66 0.17 60);
   --primary-foreground: oklch(0.16 0.02 60);
 
@@ -33,7 +41,11 @@
 
   --ring: oklch(0.71 0.16 66);
 
-  --gradient-primary: linear-gradient(180deg, var(--primary-deep), var(--primary));
+  --gradient-primary: linear-gradient(
+    180deg,
+    var(--primary-deep),
+    var(--primary)
+  );
 
   --radius: 0.6rem;
 }
@@ -73,6 +85,14 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  *,
+  ::after,
+  ::before {
+    border-color: var(
+      --border
+    ); /* v4 defaults borders to currentColor; use the theme token */
+  }
 }
 
 @theme inline {
@@ -98,7 +118,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --radius-md: var(--radius);
-   --color-success: var(--success);
+  --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
 }
 

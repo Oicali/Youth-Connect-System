@@ -8,10 +8,7 @@ import { EditConnectMemberModal } from "@/components/EditConnectMemberModal";
 import { JoinCareGroupModal } from "@/components/JoinCareGroupModal";
 import { ArchiveConnectMembersModal } from "@/components/ArchiveConnectMembersModal";
 import { useErrorModal } from "@/context/ErrorModalContext";
-import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
-} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -294,7 +291,7 @@ export default function Connect() {
               members.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="pl-4">{m.first_name} {m.last_name}</TableCell>
-                  <TableCell>{m.phone_num}</TableCell>
+                  <TableCell>{m.phone_num || "—"}</TableCell>
                   <TableCell className="capitalize">{m.gender}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {m.connector_first_name ? `${m.connector_first_name} ${m.connector_last_name}` : "—"}
@@ -385,21 +382,36 @@ export default function Connect() {
         onSaved={loadMembers}
       />
 
-      <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark as removed?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {removeTarget?.first_name} {removeTarget?.last_name} will be dropped from the Connect pipeline.
-              You can restore them from the Archive later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRemove}>Confirm</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* remove confirmation: same Dialog shell as the other modals, destructive confirm */}
+      <Dialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border py-5 pl-5 pr-12"> {/* pr-12 keeps text clear of the built-in X */}
+            <div className="flex items-start gap-4">
+              {/* icon badge: destructive-tinted circle, same icon as the row's delete button */}
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 size={18} className="text-destructive" />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <DialogTitle>Mark as removed?</DialogTitle>
+                <DialogDescription>
+                  <span className="font-medium text-foreground">{removeTarget?.first_name} {removeTarget?.last_name}</span> will be dropped from the Connect pipeline.
+                  You can restore them from the Archive later.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          {/* pinned footer bar, same as the other modals */}
+          <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
+            <Button type="button" variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>
+            <Button
+              onClick={handleConfirmRemove}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90" // red confirm for a removal, not the gold primary
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -398,8 +398,9 @@ export default function Profile() {
                     {...register("suffix")}
                   />
                 </div>
-                <div className="flex gap-3">
-                  <div className="flex-3 space-y-1.5">
+                {/* gender + birthdate: "contents" on mobile so gender is half-width and birthdate is full-width; flex row from sm, 3:1 half-width cell on xl */}
+                <div className="contents sm:col-span-2 sm:flex sm:flex-row sm:gap-3 xl:col-span-1">
+                  <div className="space-y-1.5 sm:flex-1 xl:flex-3">
                     <Label className="text-xs text-muted-foreground">
                       Gender
                     </Label>
@@ -426,7 +427,7 @@ export default function Profile() {
                       </p>
                     )}
                   </div>
-                  <div className="flex-1 space-y-1.5">
+                  <div className="col-span-2 space-y-1.5 sm:flex-1">
                     <Label className="text-xs text-muted-foreground">
                       Birthdate
                     </Label>
@@ -436,18 +437,18 @@ export default function Profile() {
                         isEditing && setDatePopoverOpen(open)
                       }
                     >
-                      <PopoverTrigger asChild>
+                      <PopoverTrigger asChild className="block w-full">
                         <Button
                           type="button"
                           variant="outline"
                           disabled={!isEditing}
-                          className={`flex h-9 w-full items-center justify-start rounded-md border border-input bg-transparent px-3 font-normal shadow-xs hover:bg-transparent dark:bg-input/30 ${
+                          className={`flex h-9 w-full flex-row-reverse items-center justify-between rounded-md border border-input bg-transparent px-3 font-normal shadow-xs hover:bg-transparent dark:bg-input/30 ${
                             !isEditing ? "pointer-events-none opacity-50" : ""
                           }`}
                         >
                           <CalendarIcon
                             size={16}
-                            className="mr-2 shrink-0 text-muted-foreground"
+                            className="ml-2 shrink-0 text-muted-foreground"
                           />
                           <span className="truncate">
                             {watch("birthdate")

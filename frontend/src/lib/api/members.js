@@ -29,6 +29,22 @@ export async function fetchMembers({ search, role, gender, connectionStatus, has
   return res.json(); // { members, total }
 }
 
+// exact first+last name lookup for the add-member duplicate warning
+export async function fetchDuplicateMembers(firstName, lastName, { excludeId, signal } = {}) {
+ 
+  const params = new URLSearchParams({ first_name: firstName || "", last_name: lastName || "" });
+  if (excludeId) params.set("exclude_id", excludeId); // edit modal: skip the member being edited
+  const res = await fetch(`${API_URL}/members/duplicates?${params.toString()}`, {
+    credentials: "include",
+    signal,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to check for duplicates");
+  }
+  return res.json(); // { members }
+}
+
 export async function createMember(data) {
   const res = await fetch(`${API_URL}/members`, {
     method: "POST",

@@ -26,6 +26,20 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
+// must stay ABOVE "/:id", or Express matches "duplicates" as an id
+router.get("/duplicates", requireAuth, async (req, res) => {
+  try {
+    const { first_name, last_name, exclude_id } = req.query;
+    const excludeId = Number.parseInt(exclude_id, 10) || null; // junk or missing value becomes null
+    const members = await memberService.findDuplicates(first_name, last_name, excludeId);
+    res.json({ members });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    console.error("Find duplicates error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
 router.get("/:id", requireAuth, async (req, res) => {
   try {
     const member = await memberService.getMember(req.params.id);
