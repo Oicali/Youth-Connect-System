@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/context/ThemeContext";
 import {
@@ -47,6 +48,14 @@ const emptyValues = {
   birthdate: "",
 };
 
+// one label + one input placeholder, matches a form field's height
+const FieldSkeleton = () => (
+  <div className="space-y-1.5">
+    <Skeleton className="h-3 w-16" />
+    <Skeleton className="h-9 w-full" />
+  </div>
+);
+
 export default function Profile() {
   const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -75,51 +84,126 @@ export default function Profile() {
   });
 
   useEffect(() => {
-  if (!authUser) return;
-  setAccount({
-    username: authUser.username,
-    role: authUser.role_name,
-    status: authUser.status,
-  });
-  const values = {
-    first_name: authUser.first_name || "",
-    last_name: authUser.last_name || "",
-    middle_name: authUser.middle_name || "",
-    suffix: authUser.suffix || "",
-    email: authUser.email || "",
-    phone: authUser.phone || "",
-    alt_phone: authUser.alt_phone || "",
-    gender: authUser.gender || "",
-    birthdate: authUser.birthdate ? authUser.birthdate.split("T")[0] : "",
-  };
-  setSavedValues(values);
-  reset(values);
-  setLoading(false);
-}, [authUser]);
+    if (!authUser) return;
+    setAccount({
+      username: authUser.username,
+      role: authUser.role_name,
+      status: authUser.status,
+    });
+    const values = {
+      first_name: authUser.first_name || "",
+      last_name: authUser.last_name || "",
+      middle_name: authUser.middle_name || "",
+      suffix: authUser.suffix || "",
+      email: authUser.email || "",
+      phone: authUser.phone || "",
+      alt_phone: authUser.alt_phone || "",
+      gender: authUser.gender || "",
+      birthdate: authUser.birthdate ? authUser.birthdate.split("T")[0] : "",
+    };
+    setSavedValues(values);
+    reset(values);
+    setLoading(false);
+  }, [authUser]);
 
   const onSubmit = async (data) => {
-  try {
-    await runWithLoading("Saving profile...", () => updateProfile(data));
-    setSavedValues(data);
-    setIsEditing(false);
-    toast.success("Profile updated");
-    refetch();
-  } catch (err) {
-    if (err.field) {
-      setError(err.field, { message: err.message });
-    } else {
-      showError(err.message, "Could Not Save Profile");
+    try {
+      await runWithLoading("Saving profile...", () => updateProfile(data));
+      setSavedValues(data);
+      setIsEditing(false);
+      toast.success("Profile updated");
+      refetch();
+    } catch (err) {
+      if (err.field) {
+        setError(err.field, { message: err.message });
+      } else {
+        showError(err.message, "Could Not Save Profile");
+      }
     }
-  }
-};
+  };
 
   const handleCancel = () => {
     reset(savedValues);
     setIsEditing(false);
   };
 
+  // skeleton mirrors the real layout so nothing shifts when data arrives
   if (loading) {
-    return <p className="text-muted-foreground">Loading profile...</p>;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">My Profile</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage your personal information and account settings
+            </p>
+          </div>
+          <Button type="button" onClick={() => setIsEditing(true)} disabled>
+            <Pencil size={16} className="mr-2" />
+            Edit profile
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
+          {/* left column: identity card + theme toggle */}
+          <div className="space-y-4">
+            <div className="space-y-5 rounded-xl border bg-card p-8">
+              <Skeleton className="mx-auto h-24 w-24 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="mx-auto h-6 w-40" />
+                <Skeleton className="mx-auto h-4 w-24" />
+              </div>
+              <div className="flex justify-center gap-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <div className="space-y-2 pt-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border bg-card p-5">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="h-5 w-9 rounded-full" />
+            </div>
+          </div>
+
+          {/* right column: personal + contact fields */}
+          <div className="space-y-6 rounded-xl border bg-card p-6">
+            <div>
+              <Skeleton className="mb-4 h-3 w-36" />
+              <div className="grid grid-cols-2 gap-4">
+                <FieldSkeleton />
+                <FieldSkeleton />
+                <FieldSkeleton />
+                <FieldSkeleton />
+                <div className="flex gap-3">
+                  <div className="flex-3">
+                    <FieldSkeleton />
+                  </div>
+                  <div className="flex-1">
+                    <FieldSkeleton />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Skeleton className="mb-4 h-3 w-36" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <FieldSkeleton />
+                </div>
+                <FieldSkeleton />
+                <FieldSkeleton />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const initials =
@@ -442,7 +526,6 @@ export default function Profile() {
                   <Label
                     htmlFor="email"
                     className="text-xs text-muted-foreground"
-                    
                   >
                     Email
                   </Label>
@@ -473,7 +556,9 @@ export default function Profile() {
                     disabled={!isEditing}
                     {...register("phone")}
                     onInput={(e) => {
-                      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      e.target.value = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 11);
                     }}
                   />
                   {errors.phone && (
@@ -496,7 +581,9 @@ export default function Profile() {
                     disabled={!isEditing}
                     {...register("alt_phone")}
                     onInput={(e) => {
-                      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      e.target.value = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 11);
                     }}
                   />
                   {errors.alt_phone && (

@@ -4,6 +4,11 @@ import { logoutUser } from "@/lib/api/auth";
 import { useTheme } from "@/context/ThemeContext";
 import logoDark from "@/assets/logo-dark.png";
 import logoLight from "@/assets/logo-light.png";
+[logoDark, logoLight].forEach((src) => {
+  const img = new Image();
+  img.src = src;
+  img.decode?.().catch(() => {});
+});
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -45,7 +50,8 @@ export function Sidebar({ onNavigate, collapsed = false }) {
             onClick={onNavigate}
             title={collapsed ? label : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              // larger text and tap target on mobile, compact from md up
+              `flex items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors md:py-2 md:text-sm ${
                 collapsed ? "justify-center" : ""
               } ${
                 isActive
@@ -54,7 +60,8 @@ export function Sidebar({ onNavigate, collapsed = false }) {
               }`
             }
           >
-            <Icon size={18} className="shrink-0" />
+            {/* 20px icon on mobile, 18px from md up */}
+            <Icon size={18} className="h-5 w-5 shrink-0 md:h-[18px] md:w-[18px]" />
             {!collapsed && label}
           </NavLink>
         ))}
@@ -64,11 +71,13 @@ export function Sidebar({ onNavigate, collapsed = false }) {
         <button
           onClick={handleLogout}
           title={collapsed ? "Logout" : undefined}
-          className={`mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-muted ${
+          // same mobile sizing as the nav items
+          className={`mt-1 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium text-destructive hover:bg-muted md:py-2 md:text-sm ${
             collapsed ? "justify-center" : ""
           }`}
         >
-          <LogOut size={18} className="shrink-0" />
+          {/* matches nav icon sizing */}
+          <LogOut size={18} className="h-5 w-5 shrink-0 md:h-[18px] md:w-[18px]" />
           {!collapsed && "Logout"}
         </button>
       </div>

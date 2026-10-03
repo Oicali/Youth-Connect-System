@@ -230,7 +230,8 @@ export default function CareGroup() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      {/* header: stacked on mobile, side by side from sm up */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Care Group</h1>
           <p className="text-sm text-muted-foreground">
