@@ -513,7 +513,7 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
             </div>
             {/* optional backdate; empty = today (PH) on the server */}
             <div className="space-y-2">
-              <Label>Date added (optional)</Label>
+              <Label>Date added </Label>
               {/* same picker as Profile; can't pick a future date */}
               <Popover open={addedOpen} onOpenChange={setAddedOpen}>
                 <PopoverTrigger
@@ -559,7 +559,7 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
             </div>
             {/* 1 column only: starts a new row after the 3 fields above */}
             <div className="space-y-2">
-              <Label>Assign to (optional)</Label>
+              <Label>Assign to</Label>
               <Select
                 value={connectorId}
                 onValueChange={setConnectorId}

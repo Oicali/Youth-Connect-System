@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search as SearchIcon, Undo2, UserPlus, Home, Trash2, Archive, Pencil } from "lucide-react";
+import { Search as SearchIcon, Undo2, UserPlus, HandHeart, Trash2, Archive, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetchMembers, markConnectionRemoved } from "@/lib/api/members";
@@ -322,7 +322,7 @@ export default function Connect() {
                             onClick={() => setJoinTarget(m)}
                             className="bg-success/10 hover:bg-success/20"
                           >
-                            <Home size={16} className="text-success" />
+                            <HandHeart size={16} className="text-success" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Joined a care group</TooltipContent>
@@ -395,7 +395,7 @@ export default function Connect() {
                 <DialogTitle>Mark as removed?</DialogTitle>
                 {/* header stays one short line, details live in the body below */}
                 <DialogDescription>
-                  <span className="font-medium text-foreground">{removeTarget?.first_name} {removeTarget?.last_name}</span> will be dropped from the Connect pipeline.
+                  <span className="font-medium text-foreground">{removeTarget?.first_name} {removeTarget?.last_name}</span> will be dropped from the Connect list.
                 </DialogDescription>
               </div>
             </div>

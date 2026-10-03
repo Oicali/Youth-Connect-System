@@ -378,7 +378,7 @@ export function AddMemberModal({ open, onOpenChange, onSaved }) {
               Contact
             </div>
             <div className="space-y-2">
-              <Label>Phone <span className="text-destructive">*</span></Label>
+              <Label>Phone</Label>
               <Input placeholder="09XX XXX XXXX" {...register("phone_num")} />
               {errors.phone_num && <p className="text-sm text-destructive">{errors.phone_num.message}</p>}
             </div>
@@ -418,7 +418,7 @@ export function AddMemberModal({ open, onOpenChange, onSaved }) {
               <Input {...register("ministry")} />
             </div>
             <div className="space-y-2">
-              <Label>Status <span className="text-destructive">*</span></Label>
+              <Label>Member Status <span className="text-destructive">*</span></Label>
               <Select value={watch("member_status")} onValueChange={(v) => setValue("member_status", v)}>
                 <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                   <SelectValue placeholder="Select status">{STATUS_LABELS[watch("member_status")]}</SelectValue>
@@ -432,7 +432,7 @@ export function AddMemberModal({ open, onOpenChange, onSaved }) {
             </div>
             {/* 1 column only: starts a new row after the 3 fields above */}
             <div className="space-y-2">
-              <Label>Mentor (optional)</Label>
+              <Label>Mentor</Label>
               <Select value={selectedMentorId} onValueChange={setSelectedMentorId} disabled={!genderValue}>
                 <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                   <SelectValue placeholder={genderValue ? "Select a mentor" : "Select a gender first"}>

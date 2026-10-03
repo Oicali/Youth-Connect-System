@@ -374,7 +374,7 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
             {/* 1 column only; hidden for removed members (no active pipeline) */}
             {!isRemoved && (
               <div className="space-y-2">
-                <Label>Assign to (optional)</Label>
+                <Label>Assign to</Label>
                 <Select value={connectorId} onValueChange={setConnectorId} disabled={!genderValue}>
                   <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                     <SelectValue placeholder={genderValue ? "Select a mentor" : "Select a gender first"}>

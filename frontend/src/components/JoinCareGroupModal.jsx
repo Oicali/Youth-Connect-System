@@ -69,7 +69,7 @@ export function JoinCareGroupModal({ member, open, onOpenChange, onSaved }) {
               <DialogDescription>
                 Assign an official mentor to{" "}
                 <span className="font-medium text-foreground">{member?.first_name} {member?.last_name}</span>.
-                This also closes out their Connect pipeline status.
+                This also closes out their Connect status.
               </DialogDescription>
             </div>
           </div>

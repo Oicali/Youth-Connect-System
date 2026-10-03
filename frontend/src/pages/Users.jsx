@@ -35,16 +35,15 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const ROLE_LABELS = { all: "All roles", admin: "Admin", volunteer: "Volunteer" };
 
@@ -304,54 +303,48 @@ export default function Users() {
                     <TableCell className="text-muted-foreground">
                       {formatDate(u.created_at)}
                     </TableCell>
-                    <TableCell className="flex justify-end gap-2 pr-4">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={isSelf}
-                        title={
-                          isSelf
-                            ? "Use Profile settings to edit your own account"
-                            : undefined
-                        }
-                        onClick={() => setEditingUser(u)}
-                        className="bg-primary/10 hover:bg-primary/20"
-                      >
-                        <Pencil size={16} className="text-primary" />
-                      </Button>
-                      {u.status === "deactivated" ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={isSelf}
-                          onClick={() =>
-                            setConfirmTarget({ user: u, nextStatus: "active" })
-                          }
-                          className="bg-success/10 hover:bg-success/20"
-                        >
-                          <RotateCcw size={16} className="text-success" />
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={isSelf}
-                          title={
-                            isSelf
-                              ? "You can't deactivate your own account"
-                              : undefined
-                          }
-                          onClick={() =>
-                            setConfirmTarget({
-                              user: u,
-                              nextStatus: "deactivated",
-                            })
-                          }
-                          className="bg-destructive/10 hover:bg-destructive/20"
-                        >
-                          <Trash2 size={16} className="text-destructive" />
-                        </Button>
-                      )}
+                    {/* row actions with tooltips, same as the other pages */}
+                    <TableCell className="flex justify-end gap-1 pr-4">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {/* span wrapper: a disabled button never fires hover, so the tooltip hangs off the span */}
+                            <span className="inline-flex">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isSelf}
+                                onClick={() => setEditingUser(u)}
+                                className="bg-primary/10 hover:bg-primary/20"
+                              >
+                                <Pencil size={16} className="text-primary" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isSelf ? "Use Profile settings to edit your own account" : "Edit user"}
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isSelf}
+                                onClick={() => setConfirmTarget({ user: u, nextStatus: "deactivated" })}
+                                className="bg-destructive/10 hover:bg-destructive/20"
+                              >
+                                <Trash2 size={16} className="text-destructive" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isSelf ? "You can't deactivate your own account" : "Deactivate user"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 );
@@ -409,31 +402,49 @@ export default function Users() {
         onSaved={loadUsers}
       />
 
-      <AlertDialog
-        open={!!confirmTarget}
-        onOpenChange={(open) => !open && setConfirmTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmTarget?.nextStatus === "deactivated"
-                ? "Deactivate this user?"
-                : "Reactivate this user?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmTarget?.nextStatus === "deactivated"
-                ? `${confirmTarget?.user.username} will no longer be able to log in. You can reactivate them later.`
-                : `${confirmTarget?.user.username} will be able to log in again.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmStatusChange}>
+      {/* status confirmation: same Dialog shell as the other pages; red for deactivate, green for reactivate */}
+      <Dialog open={!!confirmTarget} onOpenChange={(o) => !o && setConfirmTarget(null)}>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="border-b border-border py-5 pl-5 pr-12"> {/* pr-12 keeps text clear of the built-in X */}
+            <div className="flex items-start gap-4">
+              {/* icon badge: tint follows the action */}
+              <div className={`flex size-10 shrink-0 items-center justify-center rounded-full ${confirmTarget?.nextStatus === "deactivated" ? "bg-destructive/10" : "bg-success/10"}`}>
+                {confirmTarget?.nextStatus === "deactivated"
+                  ? <Trash2 size={18} className="text-destructive" />
+                  : <RotateCcw size={18} className="text-success" />}
+              </div>
+              <div className="space-y-1.5 text-left">
+                <DialogTitle>
+                  {confirmTarget?.nextStatus === "deactivated" ? "Deactivate this user?" : "Reactivate this user?"}
+                </DialogTitle>
+                {/* header stays one short line, details live in the body below */}
+                <DialogDescription>
+                  <span className="font-medium text-foreground">{confirmTarget?.user.username}</span>
+                  {confirmTarget?.nextStatus === "deactivated" ? " will be deactivated." : " will be reactivated."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="px-5 py-4 text-sm text-muted-foreground">
+            {confirmTarget?.nextStatus === "deactivated"
+              ? "They will no longer be able to log in. You can reactivate them from the Archive later."
+              : "They will be able to log in again."}
+          </div>
+
+          <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
+            <Button type="button" variant="outline" onClick={() => setConfirmTarget(null)}>Cancel</Button>
+            <Button
+              onClick={handleConfirmStatusChange}
+              className={confirmTarget?.nextStatus === "deactivated"
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" // red confirm for a deactivation
+                : "bg-success text-success-foreground hover:bg-success/90"}
+            >
               Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

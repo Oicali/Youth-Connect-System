@@ -263,7 +263,7 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
                 <Pencil size={18} className="text-primary" />
               </div>
               <div className="space-y-1.5 text-left">
-                <DialogTitle>Edit {member?.first_name}</DialogTitle>
+                <DialogTitle>Edit Member</DialogTitle>
                 <DialogDescription>
                   Update details and status. <span className="text-destructive">*</span> required
                 </DialogDescription>
@@ -371,7 +371,7 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
                 Contact
               </div>
               <div className="space-y-2">
-                <Label>Phone <span className="text-destructive">*</span></Label>
+                <Label>Phone</Label>
                 <Input placeholder="09XX XXX XXXX" {...register("phone_num")} />
                 {errors.phone_num && <p className="text-sm text-destructive">{errors.phone_num.message}</p>}
               </div>
@@ -411,7 +411,7 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
                 <Input {...register("ministry")} />
               </div>
               <div className="space-y-2">
-                <Label>Status <span className="text-destructive">*</span></Label>
+                <Label>Member Status <span className="text-destructive">*</span></Label>
                 <Select value={watch("member_status")} onValueChange={(v) => setValue("member_status", v, { shouldValidate: true })}>
                   <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                     <SelectValue placeholder="Select status">{STATUS_LABELS[watch("member_status")]}</SelectValue>
