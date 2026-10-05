@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { fetchMembers, unassignConnector } from "@/lib/api/members.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 
 import { Input } from "@/components/ui/input.jsx";
 import { Button } from "@/components/ui/button.jsx";
@@ -19,6 +20,7 @@ const formatDate = (dateStr) => {
 
 export function ArchiveConnectMembersDialog({ open, onOpenChange, onRestored }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
 
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,9 @@ export function ArchiveConnectMembersDialog({ open, onOpenChange, onRestored }) 
   const handleRestore = async (member) => {
     setRestoringId(member.id);
     try {
-      await unassignConnector(member.id); // clears assigned_to, sets connection_status back to 'pending'
+      await runWithLoading("Restoring first-timer...", () =>
+  unassignConnector(member.id),
+); // clears assigned_to, sets connection_status back to 'pending'
       toast.success(`${member.first_name} restored to pending`);
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
       onRestored?.();

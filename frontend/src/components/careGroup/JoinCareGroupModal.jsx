@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { fetchMembers, joinCareGroup } from "@/lib/api/members.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 
 import { Button } from "@/components/ui/button.jsx";
 import { Label } from "@/components/ui/label.jsx";
@@ -13,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 
 export function JoinCareGroupModal({ member, open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
   const [mentorId, setMentorId] = useState("");
   const [mentorOptions, setMentorOptions] = useState([]);
   const [loadingMentors, setLoadingMentors] = useState(false);
@@ -36,7 +38,9 @@ export function JoinCareGroupModal({ member, open, onOpenChange, onSaved }) {
     if (!mentorId) return;
     setSubmitting(true);
     try {
-      await joinCareGroup(member.id, mentorId);
+      await runWithLoading("Moving into care group...", () =>
+  joinCareGroup(member.id, mentorId),
+);
       toast.success(`${member.first_name} moved into a care group`);
       onSaved();
       onOpenChange(false);

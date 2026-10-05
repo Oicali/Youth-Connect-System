@@ -1,27 +1,28 @@
 // backend/utils/mailer.js
-const nodemailer = require("nodemailer");
-
-// one reusable connection to the SMTP provider
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false, // port 587 starts plain, then upgrades to TLS
-  requireTLS: true, // refuse to send if the upgrade fails
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-// the only function the rest of the app uses to send mail
 async function sendEmail({ to, subject, text, html }) {
-  await transporter.sendMail({
-    from: process.env.MAIL_FROM,
-    to,
-    subject,
-    text, // plain-text fallback
-    html,
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": process.env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: {
+        email: process.env.MAIL_FROM_EMAIL,
+        name: process.env.MAIL_FROM_NAME,
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
   });
+
+  // fetch doesn't throw on HTTP errors, so check explicitly
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Email send failed (${res.status}): ${body}`);
+  }
 }
 
 module.exports = { sendEmail };

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { fetchUsers, setUserStatus } from "@/lib/api/users.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 
 import { Input } from "@/components/ui/input.jsx";
 import { Button } from "@/components/ui/button.jsx";
@@ -24,6 +25,7 @@ const formatDate = (dateStr) => {
 
 export function ArchiveUsersModal({ open, onOpenChange, onRestored }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,9 @@ export function ArchiveUsersModal({ open, onOpenChange, onRestored }) {
   const handleRestore = async (targetUser) => {
     setRestoringId(targetUser.user_id);
     try {
-      await setUserStatus(targetUser.user_id, "active");
+      await runWithLoading("Reactivating user...", () =>
+  setUserStatus(targetUser.user_id, "active"),
+);
       toast.success(`${targetUser.first_name} reactivated`);
       setUsers((prev) => prev.filter((u) => u.user_id !== targetUser.user_id));
       onRestored?.();

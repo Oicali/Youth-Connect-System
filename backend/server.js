@@ -13,29 +13,34 @@ const memberRoutes = require("./controllers/memberController");
 const dashboardRoutes = require("./controllers/dashboardController");
 
 const app = express();
+app.set("trust proxy", 1);
 
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true, // allows the session cookie to be sent cross-origin
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true, // allows the session cookie to be sent cross-origin
+  }),
+);
 
 app.use(express.json());
 
-app.use(session({
-  store: new pgSession({
-    pool,
-    tableName: "session",
+app.use(
+  session({
+    store: new pgSession({
+      pool,
+      tableName: "session",
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    },
   }),
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // only HTTPS in prod
-    sameSite: "lax",
-
-  },
-}));
+);
 
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);

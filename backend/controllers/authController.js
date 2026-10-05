@@ -93,7 +93,11 @@ router.post("/logout", (req, res) => {
       console.error("Logout error:", err);
       return res.status(500).json({ message: "Could not log out" });
     }
-    res.clearCookie("connect.sid");
+         res.clearCookie("connect.sid", {
+       httpOnly: true,
+       secure: process.env.NODE_ENV === "production",
+       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+     });
     res.json({ message: "Logged out" });
   });
 });

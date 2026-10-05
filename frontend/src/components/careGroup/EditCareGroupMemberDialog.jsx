@@ -12,6 +12,7 @@ import {
   uploadMemberPhoto, deleteMemberPhoto,
 } from "@/lib/api/members.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 
 import { Button } from "@/components/ui/button.jsx";
@@ -100,6 +101,7 @@ function toFormValues(member) {
 
 export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved, allowMentorAssignment = false }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
 
   const [selectedMentorId, setSelectedMentorId] = useState("");
@@ -211,31 +213,37 @@ export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved,
     // tracks which step actually failed so the error message reflects real DB state,
     // not just "something went wrong" — profile/status can succeed while mentor assignment fails
     let step = "profile";
+    let photoError = null; // shown after the loading modal closes
     try {
-      await updateMember(member.id, { ...profileFields, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
+      await runWithLoading("Saving changes...", async () => {
+        await updateMember(member.id, { ...profileFields, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
 
-      // photo changes are separate requests; a failure shouldn't mask that the details saved
-      try {
-        if (photoFile) await uploadMemberPhoto(member.id, photoFile);
-        else if (removePhoto) await deleteMemberPhoto(member.id);
-      } catch (photoErr) {
-        showError(`${photoErr.message}. Your other changes were saved.`, "Photo Not Updated");
-      }
+        // photo changes are separate requests; a failure shouldn't mask that the details saved
+        try {
+          if (photoFile) await uploadMemberPhoto(member.id, photoFile);
+          else if (removePhoto) await deleteMemberPhoto(member.id);
+        } catch (photoErr) {
+          photoError = photoErr;
+        }
 
-      // separate endpoints by design — PUT /:id ignores member_status and mentor_id server-side
-      if (statusChanged) {
-        step = "status";
-        await setMemberStatus(member.id, member_status, { cascadeUnassignMentees });
-      }
-      if (mentorChanged) {
-        step = "mentor";
-        if (selectedMentorId) await assignMentor(member.id, selectedMentorId);
-        else await unassignMentor(member.id);
-      }
+        // separate endpoints by design — PUT /:id ignores member_status and mentor_id server-side
+        if (statusChanged) {
+          step = "status";
+          await setMemberStatus(member.id, member_status, { cascadeUnassignMentees });
+        }
+        if (mentorChanged) {
+          step = "mentor";
+          if (selectedMentorId) await assignMentor(member.id, selectedMentorId);
+          else await unassignMentor(member.id);
+        }
+      });
 
       toast.success("Member updated");
       onSaved();
       onOpenChange(false);
+      if (photoError) {
+        showError(`${photoError.message}. Your other changes were saved.`, "Photo Not Updated");
+      }
     } catch (err) {
       if (err.field) {
         setError(err.field, { type: "server", message: err.message });

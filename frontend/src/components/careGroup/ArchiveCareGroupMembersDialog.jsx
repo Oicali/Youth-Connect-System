@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { fetchMembers, setMemberStatus } from "@/lib/api/members.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 
 import { Input } from "@/components/ui/input.jsx";
 import { Button } from "@/components/ui/button.jsx";
@@ -33,6 +34,7 @@ const formatDate = (dateStr) => {
 
 export function ArchiveCareGroupMembersDialog({ open, onOpenChange, onRestored }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
 
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -72,7 +74,9 @@ export function ArchiveCareGroupMembersDialog({ open, onOpenChange, onRestored }
     const targetStatus = restoreTargets[member.id] || "mentee";
     setRestoringId(member.id);
     try {
-      await setMemberStatus(member.id, targetStatus);
+      await runWithLoading("Restoring member...", () =>
+  setMemberStatus(member.id, targetStatus),
+);
       toast.success(`${member.first_name} restored as ${RESTORE_STATUS_LABELS[targetStatus]}`);
       setMembers((prev) => prev.filter((m) => m.id !== member.id));
       onRestored?.();

@@ -16,6 +16,7 @@ import { EditConnectMemberDialog } from "@/components/connect/EditConnectMemberD
 import { JoinCareGroupModal } from "@/components/careGroup/JoinCareGroupModal.jsx";
 import { ArchiveConnectMembersDialog } from "@/components/connect/ArchiveConnectMembersDialog.jsx";
 import { useErrorModal } from "@/context/ErrorModalContext";
+import { useLoadingModal } from "@/context/LoadingModalContext";
 import {
   Dialog,
   DialogContent,
@@ -102,6 +103,7 @@ export default function Connect() {
   const [year, setYear] = useState("all");
 
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
 
   const [addOpen, setAddOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -203,7 +205,9 @@ export default function Connect() {
 
   const handleConfirmRemove = async () => {
     try {
-      await markConnectionRemoved(removeTarget.id);
+      await runWithLoading("Removing first-timer...", () =>
+  markConnectionRemoved(removeTarget.id),
+);
       toast.success(`${removeTarget.first_name} marked as removed`);
       setRemoveTarget(null);
       loadMembers();

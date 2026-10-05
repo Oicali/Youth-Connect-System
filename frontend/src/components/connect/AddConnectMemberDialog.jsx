@@ -17,6 +17,7 @@ import {
 } from "@/lib/api/members.js";
 import { AlertTriangle, UserPlus, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 
 import { Button } from "@/components/ui/button.jsx";
@@ -107,6 +108,7 @@ const ProfileLinkButton = ({ url, label }) => {
 
 export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
   const [addedOpen, setAddedOpen] = useState(false); // date added popover
   // today in PH time as YYYY-MM-DD, used as the max for the date input
@@ -224,7 +226,9 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   const handleRestoreAsMember = async (match) => {
     setRestoringId(match.id);
     try {
-      await setMemberStatus(match.id, "mentee");
+      await runWithLoading("Restoring member...", () =>
+  setMemberStatus(match.id, "mentee"),
+);
       toast.success(
         `${match.first_name} restored — you can edit their details now`,
       );
@@ -243,7 +247,9 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   const handleResumeFollowUp = async (match) => {
     setRestoringId(match.id);
     try {
-      await unassignConnector(match.id);
+      await runWithLoading("Updating follow-up...", () =>
+  unassignConnector(match.id),
+);
       toast.success(`${match.first_name} moved back to pending follow-up`);
       onSaved();
       onOpenChange(false);
@@ -255,32 +261,37 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   };
 
   const onSubmit = async (data) => {
+    let photoError = null; // shown after the loading modal closes
     try {
-      // first-timers start with no member_status at all (NULL) — they aren't a
-      // "mentee" in any real sense until joinCareGroup() sets that. Only
-      // connection_status is meaningful at intake.
-      const { member } = await createMember({
-        ...data,
-        connection_status: "pending",
-        confirm_different_person: notDuplicate, // server re-checks unless confirmed
-      });
-      // separate endpoint by design, same pattern AddCareGroupMemberDialog uses for mentor —
-      // assignConnector() also flips connection_status to 'assigned' server-side,
-      // overwriting the 'pending' just set above, which is the correct end state
-      if (connectorId) {
-        await assignConnector(member.id, connectorId);
-      }
-      // photo is its own request; a failure here must not hide that the member was created
-      if (photoFile) {
-        try {
-          await uploadMemberPhoto(member.id, photoFile);
-        } catch (photoErr) {
-          showError(`${photoErr.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
+      await runWithLoading("Adding first-timer...", async () => {
+        // first-timers start with no member_status at all (NULL) — they aren't a
+        // "mentee" in any real sense until joinCareGroup() sets that. Only
+        // connection_status is meaningful at intake.
+        const { member } = await createMember({
+          ...data,
+          connection_status: "pending",
+          confirm_different_person: notDuplicate, // server re-checks unless confirmed
+        });
+        // assignConnector() also flips connection_status to 'assigned' server-side,
+        // overwriting the 'pending' just set above, which is the correct end state
+        if (connectorId) {
+          await assignConnector(member.id, connectorId);
         }
-      }
+        // photo is its own request; a failure here must not hide that the member was created
+        if (photoFile) {
+          try {
+            await uploadMemberPhoto(member.id, photoFile);
+          } catch (photoErr) {
+            photoError = photoErr;
+          }
+        }
+      });
       toast.success("First-timer added to Connect");
       onSaved();
       onOpenChange(false);
+      if (photoError) {
+        showError(`${photoError.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
+      }
     } catch (err) {
       showError(err.message, "Could Not Add First-Timer");
       if (err.code === "DUPLICATE_NAME") setRecheckKey((k) => k + 1); // surface the warning panel + checkbox

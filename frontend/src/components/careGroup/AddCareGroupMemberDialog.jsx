@@ -22,6 +22,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 
 import { Button } from "@/components/ui/button.jsx";
@@ -132,6 +133,7 @@ const ProfileLinkButton = ({ url, label }) => {
 
 export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
 
     const [photoFile, setPhotoFile] = useState(null);
@@ -253,7 +255,9 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
     try {
       // restores to mentee by default — same safe default used in ArchiveCareGroupMembersDialog,
       // since it's the only restore target that never triggers a mentor-cascade
-      await setMemberStatus(match.id, "mentee");
+      await runWithLoading("Restoring member...", () =>
+  setMemberStatus(match.id, "mentee"),
+);
       toast.success(
         `${match.first_name} restored — you can edit their details now`,
       );
@@ -271,7 +275,9 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
   const handleResumeFollowUp = async (match) => {
     setRestoringId(match.id);
     try {
-      await unassignConnector(match.id);
+      await runWithLoading("Updating follow-up...", () =>
+  unassignConnector(match.id),
+);
       toast.success(`${match.first_name} moved back to pending follow-up`);
       onSaved();
       onOpenChange(false);
@@ -283,26 +289,31 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
   };
 
   const onSubmit = async (data) => {
+    let photoError = null; // shown after the loading modal closes
     try {
-      const { member } = await createMember({
-        ...data,
-        confirm_different_person: notDuplicate,
-      }); // server re-checks unless confirmed
-      // separate endpoint by design — POST /members doesn't accept mentor_id server-side
-      if (selectedMentorId) {
-        await assignMentor(member.id, selectedMentorId);
-      }
-      
-      if (photoFile) {
-        try {
-          await uploadMemberPhoto(member.id, photoFile);
-        } catch (photoErr) {
-          showError(`${photoErr.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
+      await runWithLoading("Creating member...", async () => {
+        const { member } = await createMember({
+          ...data,
+          confirm_different_person: notDuplicate,
+        }); // server re-checks unless confirmed
+        // separate endpoint by design — POST /members doesn't accept mentor_id server-side
+        if (selectedMentorId) {
+          await assignMentor(member.id, selectedMentorId);
         }
-      }
+        if (photoFile) {
+          try {
+            await uploadMemberPhoto(member.id, photoFile);
+          } catch (photoErr) {
+            photoError = photoErr;
+          }
+        }
+      });
       toast.success("Member created");
       onSaved();
       onOpenChange(false);
+      if (photoError) {
+        showError(`${photoError.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
+      }
     } catch (err) {
       showError(err.message, "Could Not Create Member");
       if (err.code === "DUPLICATE_NAME") setRecheckKey((k) => k + 1); // surface the warning panel + checkbox

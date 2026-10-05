@@ -1,17 +1,30 @@
 // frontend/src/pages/CareGroup.jsx
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Pencil, Trash2, Search as SearchIcon, Undo2, Users, User, UserPlus, Archive } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Search as SearchIcon,
+  Undo2,
+  Users,
+  User,
+  UserPlus,
+  Archive,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { fetchMembers, setMemberStatus } from "@/lib/api/members";
 // per-status badge colors
-import { MEMBER_STATUS_BADGE, MEMBER_STATUS_ICON } from "@/lib/memberStatusLabels";
+import {
+  MEMBER_STATUS_BADGE,
+  MEMBER_STATUS_ICON,
+} from "@/lib/memberStatusLabels";
 import { AddCareGroupMemberDialog } from "@/components/careGroup/AddCareGroupMemberDialog.jsx";
 import { EditCareGroupMemberDialog } from "@/components/careGroup/EditCareGroupMemberDialog.jsx";
 import { ArchiveCareGroupMembersDialog } from "@/components/careGroup/ArchiveCareGroupMembersDialog.jsx";
 
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 import {
   Dialog,
   DialogContent,
@@ -104,6 +117,7 @@ export default function CareGroup() {
 
   // error modal only: table loading is now shown via skeleton rows, not a modal
   const { showError } = useErrorModal();
+  const { runWithLoading } = useLoadingModal();
   const [editingMember, setEditingMember] = useState(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -111,10 +125,11 @@ export default function CareGroup() {
 
   const handleConfirmDelete = async () => {
     try {
-      // cascadeUnassignMentees is a no-op unless the target was actually a mentor
-      // (service checks wasMentor internally) — safe to always pass true here so
-      // this matches the dropdown's demotion behavior exactly, regardless of role
-      await setMemberStatus(deletingMember.id, "removed", { cascadeUnassignMentees: true });
+      await runWithLoading("Removing member...", () =>
+        setMemberStatus(deletingMember.id, "removed", {
+          cascadeUnassignMentees: true,
+        }),
+      );
       toast.success("Member removed");
       setDeletingMember(null);
       loadMembers();
@@ -136,7 +151,7 @@ export default function CareGroup() {
     [isMenteesTab, menteeStatus, tabDefaultStatus],
   );
 
-    // holds the controller of the in-flight request so the next call can cancel it
+  // holds the controller of the in-flight request so the next call can cancel it
   const abortRef = useRef(null);
 
   const loadMembers = useCallback(async () => {
@@ -377,7 +392,6 @@ export default function CareGroup() {
                         j === 0 ? "pl-4" : j === colSpan - 1 ? "pr-4" : ""
                       }
                     >
-                    
                       {j === colSpan - 1 ? (
                         <div className="flex justify-end gap-2">
                           <div className="h-9 w-9 animate-pulse rounded-md bg-muted" />
@@ -392,7 +406,6 @@ export default function CareGroup() {
               ))
             ) : members.length === 0 ? (
               <TableRow>
-              
                 <TableCell
                   colSpan={colSpan}
                   className="h-[49px] text-center align-middle text-muted-foreground"
@@ -404,13 +417,19 @@ export default function CareGroup() {
               members.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="pl-4">
-                   
                     <div className="flex items-center gap-3">
-                      <MemberAvatar url={m.photo_url} firstName={m.first_name} lastName={m.last_name} previewable />
-                      <span>{m.first_name} {m.last_name}</span>
+                      <MemberAvatar
+                        url={m.photo_url}
+                        firstName={m.first_name}
+                        lastName={m.last_name}
+                        previewable
+                      />
+                      <span>
+                        {m.first_name} {m.last_name}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell>{m.phone_num || "—"}</TableCell> 
+                  <TableCell>{m.phone_num || "—"}</TableCell>
                   <TableCell className="capitalize">{m.gender}</TableCell>
 
                   {isMenteesTab && (
@@ -450,7 +469,12 @@ export default function CareGroup() {
                               <div className="my-2 w-full border-t border-border" />
                               <ul className="flex w-full flex-col gap-1.5">
                                 {/* prefers mentee_list (has status); falls back to names only, which keeps the old gold icon */}
-                                {(m.mentee_list ?? (m.mentee_names || []).map((name) => ({ name }))).map((p) => (
+                                {(
+                                  m.mentee_list ??
+                                  (m.mentee_names || []).map((name) => ({
+                                    name,
+                                  }))
+                                ).map((p) => (
                                   <li
                                     key={p.id ?? p.name}
                                     className="flex items-center gap-2 text-sm"
@@ -577,11 +601,15 @@ export default function CareGroup() {
         allowMentorAssignment
       />
 
-      
-      <Dialog open={!!deletingMember} onOpenChange={(o) => !o && setDeletingMember(null)}>
+      <Dialog
+        open={!!deletingMember}
+        onOpenChange={(o) => !o && setDeletingMember(null)}
+      >
         {/* max-w-lg gives long warnings room to breathe */}
         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b border-border py-5 pl-5 pr-12"> {/* pr-12 keeps text clear of the built-in X */}
+          <DialogHeader className="border-b border-border py-5 pl-5 pr-12">
+            {" "}
+            {/* pr-12 keeps text clear of the built-in X */}
             <div className="flex items-start gap-4">
               {/* icon badge: destructive-tinted circle, same icon as the row's delete button */}
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
@@ -591,7 +619,10 @@ export default function CareGroup() {
                 <DialogTitle>Remove this member?</DialogTitle>
                 {/* header stays one short line, details live in the body below */}
                 <DialogDescription>
-                  <span className="font-medium text-foreground">{deletingMember?.first_name} {deletingMember?.last_name}</span> will be marked as removed.
+                  <span className="font-medium text-foreground">
+                    {deletingMember?.first_name} {deletingMember?.last_name}
+                  </span>{" "}
+                  will be marked as removed.
                 </DialogDescription>
               </div>
             </div>
@@ -605,7 +636,8 @@ export default function CareGroup() {
                   {deletingMember.mentee_count} mentee(s) will be unassigned
                 </p>
                 <p className="mt-1">
-                  Their mentor field will be set back to "None." Restoring this member later will not reassign them.
+                  Their mentor field will be set back to "None." Restoring this
+                  member later will not reassign them.
                 </p>
               </div>
             )}
@@ -613,7 +645,13 @@ export default function CareGroup() {
           </div>
           {/* pinned footer bar, same as the other modals */}
           <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
-            <Button type="button" variant="outline" onClick={() => setDeletingMember(null)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeletingMember(null)}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90" // red confirm for a removal, not the gold primary

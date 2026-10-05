@@ -9,6 +9,7 @@ import { UserPlus, Pencil, Calendar as CalendarIcon } from "lucide-react";
 import { addUserSchema, editUserSchema } from "@/lib/validations/user.js";
 import { createUser, updateUser } from "@/lib/api/users.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -35,6 +36,7 @@ const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
 export function UserFormDialog({ user, open, onOpenChange, onSaved }) {
   const isEdit = !!user;
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birthdate popover
 
   const {
@@ -72,10 +74,14 @@ export function UserFormDialog({ user, open, onOpenChange, onSaved }) {
     const { confirmPassword, ...payload } = data;
     try {
       if (isEdit) {
-        await updateUser(user.user_id, { ...payload, role_id: Number(payload.role_id) });
+        await runWithLoading("Saving user...", () =>
+          updateUser(user.user_id, { ...payload, role_id: Number(payload.role_id) }),
+        );
         toast.success("User updated");
       } else {
-        await createUser({ ...payload, role_id: Number(payload.role_id) });
+        await runWithLoading("Creating user...", () =>
+          createUser({ ...payload, role_id: Number(payload.role_id) }),
+        );
         toast.success("User created");
       }
       onSaved();

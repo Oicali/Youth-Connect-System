@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge.jsx";
 import { Checkbox } from "@/components/ui/checkbox.jsx";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -87,6 +88,7 @@ const buildDefaults = (member) => ({
 
 export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
+const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
   const [addedOpen, setAddedOpen] = useState(false); // date added popover
   // today in PH time as YYYY-MM-DD, used as the max for the date input
@@ -179,28 +181,34 @@ export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved })
   const isRemoved = member?.connection_status === "removed";
 
   const onSubmit = async (data) => {
+    let photoError = null; // shown after the loading modal closes
     try {
-      await updateMember(member.id, { ...data, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
+      await runWithLoading("Saving changes...", async () => {
+        await updateMember(member.id, { ...data, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
 
-      // photo changes are separate requests; a failure shouldn't mask that the details saved
-      try {
-        if (photoFile) await uploadMemberPhoto(member.id, photoFile);
-        else if (removePhoto) await deleteMemberPhoto(member.id);
-      } catch (photoErr) {
-        showError(`${photoErr.message}. Your other changes were saved.`, "Photo Not Updated");
-      }
-
-      if (!isRemoved && connectorId !== originalConnectorId) {
-        if (connectorId) {
-          await assignConnector(member.id, connectorId);
-        } else {
-          await unassignConnector(member.id);
+        // photo changes are separate requests; a failure shouldn't mask that the details saved
+        try {
+          if (photoFile) await uploadMemberPhoto(member.id, photoFile);
+          else if (removePhoto) await deleteMemberPhoto(member.id);
+        } catch (photoErr) {
+          photoError = photoErr;
         }
-      }
+
+        if (!isRemoved && connectorId !== originalConnectorId) {
+          if (connectorId) {
+            await assignConnector(member.id, connectorId);
+          } else {
+            await unassignConnector(member.id);
+          }
+        }
+      });
 
       toast.success("Member updated");
       onSaved();
       onOpenChange(false);
+      if (photoError) {
+        showError(`${photoError.message}. Your other changes were saved.`, "Photo Not Updated");
+      }
     } catch (err) {
       showError(err.message, "Could Not Update Member");
       if (err.code === "DUPLICATE_NAME") setRecheckKey((k) => k + 1); // surface the warning panel + checkbox
