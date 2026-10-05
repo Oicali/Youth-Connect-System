@@ -5,7 +5,7 @@ const MEMBER_COLUMNS = `
   m.id, m.first_name, m.last_name, m.gender, m.birth_date, m.address,
   m.phone_num, m.alt_phone, m.main_church, m.mentor_id, m.ministry,
   m.member_status, m.connection_status, m.assigned_to,
-  m.added_at, m.updated_at, m.facebook, m.instagram,
+  m.added_at, m.updated_at, m.facebook, m.instagram, m.photo_key,
   mentor.first_name AS mentor_first_name, mentor.last_name AS mentor_last_name,
   connector.first_name AS connector_first_name, connector.last_name AS connector_last_name
 `;
@@ -22,7 +22,7 @@ async function findById(memberId) {
   return result.rows[0] || null;
 }
 
-async function findAll({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 15 } = {}) {
+async function findAll({ search, role, gender, connectionStatus, hasAssigned, addedYear, addedMonth, sort, page = 1, limit = 10 } = {}) {
   const conditions = [];
   const values = [];
   let i = 1;
@@ -129,7 +129,15 @@ async function findAll({ search, role, gender, connectionStatus, hasAssigned, ad
               array_agg(mentee.first_name || ' ' || mentee.last_name ORDER BY mentee.last_name, mentee.first_name)
                 FILTER (WHERE mentee.id IS NOT NULL),
               '{}'
-            ) AS mentee_names
+            ) AS mentee_names,
+            -- same mentees as objects, so the tooltip can color each by member_status
+            COALESCE(
+              json_agg(
+                json_build_object('id', mentee.id, 'name', mentee.first_name || ' ' || mentee.last_name, 'member_status', mentee.member_status)
+                ORDER BY mentee.last_name, mentee.first_name
+              ) FILTER (WHERE mentee.id IS NOT NULL),
+              '[]'::json
+            ) AS mentee_list
      FROM members m
      LEFT JOIN members mentor ON m.mentor_id = mentor.id
      LEFT JOIN members mentee ON mentee.mentor_id = m.id
@@ -365,6 +373,16 @@ async function findExactNameMatch(firstName, lastName, excludeId = null) {
   return result.rows[0] || null;
 }
 
+// sets or clears (null) the member's R2 photo key; updated_at is left alone so list sorting doesn't shift
+async function updatePhotoKey(memberId, photoKey) {
+  const result = await pool.query(
+    `UPDATE members SET photo_key = $1 WHERE id = $2
+     RETURNING id, first_name, last_name, photo_key`,
+    [photoKey, memberId]
+  );
+  return result.rows[0];
+}
+
 // bulk-unassigns everyone under this mentor — used when demoting a mentor away from "mentor" status
 async function unassignAllMenteesOfMentor(mentorId) {
   const result = await pool.query(
@@ -395,4 +413,5 @@ module.exports = {
   findExactNameMatch,
   findChurches,
   findCanonicalChurch,
+  updatePhotoKey,
 };

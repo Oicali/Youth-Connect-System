@@ -1,4 +1,4 @@
-//frontend\src\components\JoinCareGroupModal.jsx
+// frontend\src\components\careGroup\JoinCareGroupModal.jsx
 import { useState, useEffect } from "react";
 import { Home } from "lucide-react";
 import { toast } from "sonner";

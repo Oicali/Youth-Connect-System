@@ -51,7 +51,7 @@ router.get("/", requireAuth, requireRole(["admin"]), async (req, res) => {
       search, role, status,
       page: page ? Number(page) : 1,
       // cap page size so ?limit=100000 can't dump the whole table
-      limit: limit ? Math.min(Number(limit), 100) : 15,
+      limit: limit ? Math.min(Number(limit), 100) : 10,
     });
     res.json({ users: rows, total });
   } catch (err) {

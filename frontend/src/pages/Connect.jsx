@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search as SearchIcon, Undo2, UserPlus, HandHeart, Trash2, Archive, Pencil } from "lucide-react";
+import {
+  Search as SearchIcon,
+  Undo2,
+  UserPlus,
+  HandHeart,
+  Trash2,
+  Archive,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { fetchMembers, markConnectionRemoved } from "@/lib/api/members";
@@ -8,21 +16,57 @@ import { EditConnectMemberDialog } from "@/components/connect/EditConnectMemberD
 import { JoinCareGroupModal } from "@/components/careGroup/JoinCareGroupModal.jsx";
 import { ArchiveConnectMembersDialog } from "@/components/connect/ArchiveConnectMembersDialog.jsx";
 import { useErrorModal } from "@/context/ErrorModalContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MemberAvatar } from "@/components/MemberAvatar.jsx"; // photo or initials
 
 const GENDER_LABELS = { all: "All genders", male: "Male", female: "Female" };
 const ASSIGNED_LABELS = { all: "All", yes: "Assigned", no: "Not assigned" };
 
 const MONTH_LABELS = {
-  all: "All months", 1: "January", 2: "February", 3: "March", 4: "April",
-  5: "May", 6: "June", 7: "July", 8: "August", 9: "September",
-  10: "October", 11: "November", 12: "December",
+  all: "All months",
+  1: "January",
+  2: "February",
+  3: "March",
+  4: "April",
+  5: "May",
+  6: "June",
+  7: "July",
+  8: "August",
+  9: "September",
+  10: "October",
+  11: "November",
+  12: "December",
 };
 
 // last 5 years back from now — adjust the range if your Connect data goes back further
@@ -31,10 +75,14 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, idx) => CURRENT_YEAR - idx);
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
-const LIMIT = 15;
+const LIMIT = 10;
 
 export default function Connect() {
   const [members, setMembers] = useState([]);
@@ -75,11 +123,9 @@ export default function Connect() {
       const { members, total } = await fetchMembers({
         search,
         gender,
-        // "active" = still in the Connect pipeline (pending or assigned) — excludes
-        // full members (connection_status NULL) and archived ones (removed), which
-        // ArchiveConnectMembersDialog handles separately
         connectionStatus: "active",
-        hasAssigned: assigned === "yes" ? "true" : assigned === "no" ? "false" : undefined,
+        hasAssigned:
+          assigned === "yes" ? "true" : assigned === "no" ? "false" : undefined,
         addedMonth: month !== "all" ? month : undefined,
         addedYear: year !== "all" ? year : undefined,
         sort: "no_assigned_first_added",
@@ -102,7 +148,9 @@ export default function Connect() {
   // cancel any pending request when leaving the page
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  useEffect(() => { loadMembers(); }, [loadMembers]);
+  useEffect(() => {
+    loadMembers();
+  }, [loadMembers]);
 
   const handleApplyFilters = () => {
     setSearch(searchInput.trim());
@@ -114,16 +162,24 @@ export default function Connect() {
   };
 
   const handleResetFilters = () => {
-    setSearchInput(""); setSearch("");
-    setPendingGender("all"); setGender("all");
-    setPendingAssigned("all"); setAssigned("all");
-    setPendingMonth("all"); setMonth("all");
-    setPendingYear("all"); setYear("all");
+    setSearchInput("");
+    setSearch("");
+    setPendingGender("all");
+    setGender("all");
+    setPendingAssigned("all");
+    setAssigned("all");
+    setPendingMonth("all");
+    setMonth("all");
+    setPendingYear("all");
+    setYear("all");
     setPage(1);
   };
 
   const handleSearchKeyDown = (e) => {
-    if (e.key === "Enter") { e.preventDefault(); handleApplyFilters(); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleApplyFilters();
+    }
   };
 
   const filtersDirty =
@@ -134,11 +190,16 @@ export default function Connect() {
     pendingYear !== year;
 
   const filtersAtDefault =
-    !searchInput && !search &&
-    pendingGender === "all" && gender === "all" &&
-    pendingAssigned === "all" && assigned === "all" &&
-    pendingMonth === "all" && month === "all" &&
-    pendingYear === "all" && year === "all";
+    !searchInput &&
+    !search &&
+    pendingGender === "all" &&
+    gender === "all" &&
+    pendingAssigned === "all" &&
+    assigned === "all" &&
+    pendingMonth === "all" &&
+    month === "all" &&
+    pendingYear === "all" &&
+    year === "all";
 
   const handleConfirmRemove = async () => {
     try {
@@ -156,8 +217,10 @@ export default function Connect() {
       {/* header: stacked on mobile, side by side from sm up */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Connect</h1>
-          <p className="text-sm text-muted-foreground">Follow up first-timers before they join a care group</p>
+          <h1 className="text-2xl font-bold">Pending Connect</h1>
+          <p className="text-sm text-muted-foreground">
+            Follow up first-timers before they join a care group
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setArchiveOpen(true)}>
@@ -188,7 +251,9 @@ export default function Connect() {
             <span className="px-1 text-xs text-muted-foreground">Gender</span>
             <Select value={pendingGender} onValueChange={setPendingGender}>
               <SelectTrigger className="w-full bg-card sm:w-40">
-                <SelectValue placeholder="Gender">{GENDER_LABELS[pendingGender]}</SelectValue>
+                <SelectValue placeholder="Gender">
+                  {GENDER_LABELS[pendingGender]}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All genders</SelectItem>
@@ -202,7 +267,9 @@ export default function Connect() {
             <span className="px-1 text-xs text-muted-foreground">Assigned</span>
             <Select value={pendingAssigned} onValueChange={setPendingAssigned}>
               <SelectTrigger className="w-full bg-card sm:w-36">
-                <SelectValue placeholder="Assigned">{ASSIGNED_LABELS[pendingAssigned]}</SelectValue>
+                <SelectValue placeholder="Assigned">
+                  {ASSIGNED_LABELS[pendingAssigned]}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
@@ -213,40 +280,78 @@ export default function Connect() {
           </div>
 
           <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:flex-none">
-            <span className="px-1 text-xs text-muted-foreground">Created month</span>
-            <Select value={String(pendingMonth)} onValueChange={(v) => setPendingMonth(v === "all" ? "all" : Number(v))}>
+            <span className="px-1 text-xs text-muted-foreground">
+              Created month
+            </span>
+            <Select
+              value={String(pendingMonth)}
+              onValueChange={(v) =>
+                setPendingMonth(v === "all" ? "all" : Number(v))
+              }
+            >
               <SelectTrigger className="w-full bg-card sm:w-36">
-                <SelectValue placeholder="Month">{MONTH_LABELS[pendingMonth]}</SelectValue>
+                <SelectValue placeholder="Month">
+                  {MONTH_LABELS[pendingMonth]}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All months</SelectItem>
-                {Object.entries(MONTH_LABELS).filter(([k]) => k !== "all").map(([num, label]) => (
-                  <SelectItem key={num} value={num}>{label}</SelectItem>
-                ))}
+                {Object.entries(MONTH_LABELS)
+                  .filter(([k]) => k !== "all")
+                  .map(([num, label]) => (
+                    <SelectItem key={num} value={num}>
+                      {label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex min-w-[120px] flex-1 flex-col gap-1 sm:flex-none">
-            <span className="px-1 text-xs text-muted-foreground">Created year</span>
-            <Select value={String(pendingYear)} onValueChange={(v) => setPendingYear(v === "all" ? "all" : Number(v))}>
+            <span className="px-1 text-xs text-muted-foreground">
+              Created year
+            </span>
+            <Select
+              value={String(pendingYear)}
+              onValueChange={(v) =>
+                setPendingYear(v === "all" ? "all" : Number(v))
+              }
+            >
               <SelectTrigger className="w-full bg-card sm:w-28">
-                <SelectValue placeholder="Year">{pendingYear === "all" ? "All years" : pendingYear}</SelectValue>
+                <SelectValue placeholder="Year">
+                  {pendingYear === "all" ? "All years" : pendingYear}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All years</SelectItem>
                 {YEAR_OPTIONS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex gap-2">
-            <Button variant={filtersDirty ? "default" : "outline"} size="icon" onClick={handleApplyFilters} disabled={!filtersDirty} aria-label="Apply filters" className="shrink-0">
+            <Button
+              variant={filtersDirty ? "default" : "outline"}
+              size="icon"
+              onClick={handleApplyFilters}
+              disabled={!filtersDirty}
+              aria-label="Apply filters"
+              className="shrink-0"
+            >
               <SearchIcon size={16} />
             </Button>
-            <Button variant="outline" size="icon" onClick={handleResetFilters} disabled={filtersAtDefault} aria-label="Reset filters" className="shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleResetFilters}
+              disabled={filtersAtDefault}
+              aria-label="Reset filters"
+              className="shrink-0"
+            >
               <Undo2 size={16} />
             </Button>
           </div>
@@ -270,12 +375,24 @@ export default function Connect() {
             {loading ? (
               Array.from({ length: LIMIT }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
-                  <TableCell className="pl-4"><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-14" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="pl-4">
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-14" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
                   <TableCell className="pr-4">
                     <div className="flex justify-end gap-1">
                       <Skeleton className="h-8 w-8 rounded-md" />
@@ -286,18 +403,39 @@ export default function Connect() {
                 </TableRow>
               ))
             ) : members.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No one matches these filters right now</TableCell></TableRow>
+              // empty state: height of one data row (~49px), text centered both ways
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="h-[49px] text-center align-middle text-muted-foreground"
+                >
+                  No one matches these filters right now
+                </TableCell>
+              </TableRow>
             ) : (
               members.map((m) => (
                 <TableRow key={m.id}>
-                  <TableCell className="pl-4">{m.first_name} {m.last_name}</TableCell>
+                  <TableCell className="pl-4">
+                    {/* avatar + name; photo_url is a short-lived signed URL from the API */}
+                    <div className="flex items-center gap-3">
+                      
+<MemberAvatar url={m.photo_url} firstName={m.first_name} lastName={m.last_name} previewable />
+                      <span>
+                        {m.first_name} {m.last_name}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell>{m.phone_num || "—"}</TableCell>
                   <TableCell className="capitalize">{m.gender}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {m.connector_first_name ? `${m.connector_first_name} ${m.connector_last_name}` : "—"}
+                    {m.connector_first_name
+                      ? `${m.connector_first_name} ${m.connector_last_name}`
+                      : "—"}
                   </TableCell>
                   <TableCell>{m.main_church || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(m.added_at)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(m.added_at)}
+                  </TableCell>
                   <TableCell className="flex justify-end gap-1 pr-4">
                     <TooltipProvider>
                       <Tooltip>
@@ -353,17 +491,38 @@ export default function Connect() {
       {total > LIMIT && (
         <div className="flex items-center justify-between px-1">
           <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total} records
+            Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of{" "}
+            {total} records
           </p>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={page <= 1 || loading}>Previous</Button>
-            <span className="text-sm font-medium">Page {page} of {Math.ceil(total / LIMIT)}</span>
-            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= Math.ceil(total / LIMIT) || loading}>Next</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page <= 1 || loading}
+            >
+              Previous
+            </Button>
+            <span className="text-sm font-medium">
+              Page {page} of {Math.ceil(total / LIMIT)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= Math.ceil(total / LIMIT) || loading}
+            >
+              Next
+            </Button>
           </div>
         </div>
       )}
 
-      <AddConnectMemberDialog open={addOpen} onOpenChange={setAddOpen} onSaved={loadMembers} />
+      <AddConnectMemberDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSaved={loadMembers}
+      />
 
       <EditConnectMemberDialog
         member={editingMember}
@@ -372,8 +531,11 @@ export default function Connect() {
         onSaved={loadMembers}
       />
 
-      <ArchiveConnectMembersDialog open={archiveOpen} onOpenChange={setArchiveOpen} onRestored={loadMembers} />
-
+      <ArchiveConnectMembersDialog
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        onRestored={loadMembers}
+      />
 
       <JoinCareGroupModal
         member={joinTarget}
@@ -383,9 +545,14 @@ export default function Connect() {
       />
 
       {/* remove confirmation: same Dialog shell as the other modals, destructive confirm */}
-      <Dialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+      <Dialog
+        open={!!removeTarget}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+      >
         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-          <DialogHeader className="border-b border-border py-5 pl-5 pr-12"> {/* pr-12 keeps text clear of the built-in X */}
+          <DialogHeader className="border-b border-border py-5 pl-5 pr-12">
+            {" "}
+            {/* pr-12 keeps text clear of the built-in X */}
             <div className="flex items-start gap-4">
               {/* icon badge: destructive-tinted circle, same icon as the row's delete button */}
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
@@ -395,7 +562,10 @@ export default function Connect() {
                 <DialogTitle>Mark as removed?</DialogTitle>
                 {/* header stays one short line, details live in the body below */}
                 <DialogDescription>
-                  <span className="font-medium text-foreground">{removeTarget?.first_name} {removeTarget?.last_name}</span> will be dropped from the Connect list.
+                  <span className="font-medium text-foreground">
+                    {removeTarget?.first_name} {removeTarget?.last_name}
+                  </span>{" "}
+                  will be dropped from the Connect list.
                 </DialogDescription>
               </div>
             </div>
@@ -403,11 +573,18 @@ export default function Connect() {
 
           {/* body: same structure as the Care Group remove dialog */}
           <div className="px-5 py-4 text-sm text-muted-foreground">
-            You can restore them from the Archive later. Restoring sends them back to pending follow-up.
+            You can restore them from the Archive later. Restoring sends them
+            back to pending follow-up.
           </div>
           {/* pinned footer bar, same as the other modals */}
           <DialogFooter className="border-t border-border bg-muted/30 px-5 py-4">
-            <Button type="button" variant="outline" onClick={() => setRemoveTarget(null)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRemoveTarget(null)}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleConfirmRemove}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90" // red confirm for a removal, not the gold primary

@@ -1,10 +1,12 @@
-// frontend/src/pages/careGroup.jsx
+// frontend/src/pages/CareGroup.jsx
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Pencil, Trash2, Search as SearchIcon, Undo2, Users, User, UserPlus, Archive } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetchMembers, setMemberStatus } from "@/lib/api/members";
+// per-status badge colors
+import { MEMBER_STATUS_BADGE, MEMBER_STATUS_ICON } from "@/lib/memberStatusLabels";
 import { AddCareGroupMemberDialog } from "@/components/careGroup/AddCareGroupMemberDialog.jsx";
 import { EditCareGroupMemberDialog } from "@/components/careGroup/EditCareGroupMemberDialog.jsx";
 import { ArchiveCareGroupMembersDialog } from "@/components/careGroup/ArchiveCareGroupMembersDialog.jsx";
@@ -43,6 +45,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { MemberAvatar } from "@/components/MemberAvatar.jsx";
 
 const TABS = [
   { key: "mentors", label: "Mentors", memberStatus: ["mentor"] },
@@ -90,7 +93,7 @@ export default function CareGroup() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
 
-  const LIMIT = 15;
+  const LIMIT = 10;
   const [page, setPage] = useState(1);
 
   // only meaningful on the Mentees tab for now
@@ -389,9 +392,10 @@ export default function CareGroup() {
               ))
             ) : members.length === 0 ? (
               <TableRow>
+              
                 <TableCell
                   colSpan={colSpan}
-                  className="text-center text-muted-foreground"
+                  className="h-[49px] text-center align-middle text-muted-foreground"
                 >
                   No {activeTab} found
                 </TableCell>
@@ -400,14 +404,22 @@ export default function CareGroup() {
               members.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="pl-4">
-                    {m.first_name} {m.last_name}
+                   
+                    <div className="flex items-center gap-3">
+                      <MemberAvatar url={m.photo_url} firstName={m.first_name} lastName={m.last_name} previewable />
+                      <span>{m.first_name} {m.last_name}</span>
+                    </div>
                   </TableCell>
                   <TableCell>{m.phone_num || "—"}</TableCell> 
                   <TableCell className="capitalize">{m.gender}</TableCell>
 
                   {isMenteesTab && (
                     <TableCell>
-                      <Badge className="capitalize" variant="secondary">
+                      {/* color keyed by raw member_status, label text still comes from getMenteeStatusLabel */}
+                      <Badge
+                        className={`capitalize ${MEMBER_STATUS_BADGE[m.member_status] ?? ""}`}
+                        variant="secondary"
+                      >
                         {getMenteeStatusLabel(m)}
                       </Badge>
                     </TableCell>
@@ -437,16 +449,17 @@ export default function CareGroup() {
                               </p>
                               <div className="my-2 w-full border-t border-border" />
                               <ul className="flex w-full flex-col gap-1.5">
-                                {(m.mentee_names || []).map((name) => (
+                                {/* prefers mentee_list (has status); falls back to names only, which keeps the old gold icon */}
+                                {(m.mentee_list ?? (m.mentee_names || []).map((name) => ({ name }))).map((p) => (
                                   <li
-                                    key={name}
+                                    key={p.id ?? p.name}
                                     className="flex items-center gap-2 text-sm"
                                   >
                                     <User
                                       size={14}
-                                      className="shrink-0 text-primary"
+                                      className={`shrink-0 ${MEMBER_STATUS_ICON[p.member_status] ?? "text-primary"}`}
                                     />
-                                    <span>{name}</span>
+                                    <span>{p.name}</span>
                                   </li>
                                 ))}
                               </ul>

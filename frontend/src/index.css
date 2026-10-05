@@ -47,6 +47,10 @@
   --chart-female: oklch(0.76 0.16 74);
   --chart-female-foreground: oklch(0.16 0.02 60);
   --chart-mentor: oklch(0.48 0.12 55); /* Mentors line keeps the deep amber now that male is blue */
+  /* member status colors (match the badges): amber / violet / sky at Tailwind -700 for light cards */
+  --status-mentor: oklch(0.555 0.163 48.4);
+  --status-potential: oklch(0.491 0.27 292.6);
+  --status-mentee: oklch(0.5 0.134 242.7);
   --accent-ink: oklch(0.45 0.12 60); /* readable gold-brown for icons/badges on light cards */
 
   --gradient-primary: linear-gradient(
@@ -95,6 +99,10 @@
   --chart-female-foreground: oklch(0.16 0.02 60);
   --chart-mentor: oklch(0.52 0.13 55);
   --accent-ink: oklch(0.76 0.16 74);
+  /* member status colors in dark mode: amber-500 / violet-400 / sky-400, same as the badge text */
+  --status-mentor: oklch(0.769 0.188 70.08);
+  --status-potential: oklch(0.702 0.183 293.5);
+  --status-mentee: oklch(0.746 0.16 232.7);
 }
 
 @layer base {
@@ -138,6 +146,10 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
     --color-chart-male: var(--chart-male);
+  /* enables bg-status-mentor, text-status-mentee, etc. */
+  --color-status-mentor: var(--status-mentor);
+  --color-status-potential: var(--status-potential);
+  --color-status-mentee: var(--status-mentee);
   --color-chart-female: var(--chart-female);
 }
 

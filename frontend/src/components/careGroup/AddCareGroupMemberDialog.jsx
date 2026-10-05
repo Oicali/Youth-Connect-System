@@ -1,4 +1,4 @@
-// frontend/src/components/AddCareGroupMemberDialog.jsx
+// frontend\src\components\careGroup\AddCareGroupMemberDialog.jsx
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +13,7 @@ import {
   fetchDuplicateMembers,
   setMemberStatus,
   unassignConnector,
+  uploadMemberPhoto,
 } from "@/lib/api/members.js";
 import {
   AlertTriangle,
@@ -50,7 +51,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog.jsx";
-import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
+import { scrollToFirstError } from "@/lib/scrollToFirstError.js";
+import { PhotoPicker } from "@/components/PhotoPicker.jsx"; 
 
 const emptyDefaults = {
   member_status: "mentee",
@@ -132,6 +134,7 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
 
+    const [photoFile, setPhotoFile] = useState(null);
   const [selectedMentorId, setSelectedMentorId] = useState("");
   const [mentorOptions, setMentorOptions] = useState([]);
   const [mentorsLoading, setMentorsLoading] = useState(false);
@@ -159,6 +162,7 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
     if (open) {
       reset(emptyDefaults);
       setSelectedMentorId("");
+      setPhotoFile(null); 
       setNotDuplicate(false);
     }
   }, [open, reset]);
@@ -287,6 +291,14 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
       // separate endpoint by design — POST /members doesn't accept mentor_id server-side
       if (selectedMentorId) {
         await assignMentor(member.id, selectedMentorId);
+      }
+      
+      if (photoFile) {
+        try {
+          await uploadMemberPhoto(member.id, photoFile);
+        } catch (photoErr) {
+          showError(`${photoErr.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
+        }
       }
       toast.success("Member created");
       onSaved();
@@ -418,6 +430,16 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
                 )}
               </div>
             )}
+
+            {/* photo picker, top of the form body */}
+            <div className="sm:col-span-3">
+              <PhotoPicker
+                file={photoFile}
+                onFileChange={setPhotoFile}
+                firstName={watch("first_name")}
+                lastName={watch("last_name")}
+              />
+            </div>
 
             {/* section: Personal */}
             <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground after:h-px after:flex-1 after:bg-border after:content-[''] sm:col-span-3">

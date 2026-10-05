@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Link2, Users, User, LogOut, HandHeart } from "lucide-react";
+import { LayoutDashboard, UserPlus, Users, User, LogOut, HandHeart } from "lucide-react";
 import { logoutUser } from "@/lib/api/auth";
 import { useTheme } from "@/context/ThemeContext";
 import logoDark from "@/assets/logo-dark.png";
@@ -12,7 +12,7 @@ import logoLight from "@/assets/logo-light.png";
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { label: "Connect", path: "/connect", icon: Link2 },
+  { label: "Connect", path: "/connect", icon: UserPlus },
   { label: "Care Group", path: "/caregroup", icon: HandHeart },
   { label: "Users", path: "/users", icon: Users },
   { label: "Profile", path: "/profile", icon: User },

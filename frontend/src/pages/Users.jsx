@@ -65,7 +65,7 @@ export default function Users() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const limit = 15;
+  const limit = 10;
 
   const { showError } = useErrorModal();
   const { runWithLoading } = useLoadingModal();
@@ -271,9 +271,10 @@ export default function Users() {
               ))
             ) : users.length === 0 ? (
               <TableRow>
+                
                 <TableCell
                   colSpan={7}
-                  className="text-center text-muted-foreground"
+                  className="h-[49px] text-center align-middle text-muted-foreground"
                 >
                   No users found
                 </TableCell>

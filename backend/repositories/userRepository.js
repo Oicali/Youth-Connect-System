@@ -61,7 +61,7 @@ async function updatePassword(userId, newHash) {
   );
 }
 
-async function findAll({ search, role, status, page = 1, limit = 15 } = {}) {
+async function findAll({ search, role, status, page = 1, limit = 10 } = {}) {
   const conditions = [];
   const values = [];
   let i = 1;

@@ -1,5 +1,8 @@
 // backend\services\memberService.js
+const { randomUUID } = require("crypto");
 const memberRepository = require("../repositories/memberRepository");
+const r2Storage = require("../lib/r2Storage");
+const { processProfilePhoto } = require("../lib/imageProcessor");
 
 const MEMBER_STATUSES = ["mentor", "potential mentor", "mentee", "removed"];
 
@@ -43,6 +46,12 @@ function validateAddedAt(addedAt) {
   }
 }
 
+// swaps the internal photo_key for a short-lived signed photo_url (null when no photo)
+async function attachPhotoUrl(member) {
+  const { photo_key, ...rest } = member;
+  return { ...rest, photo_url: photo_key ? await r2Storage.getSignedReadUrl(photo_key) : null };
+}
+
 async function getMember(memberId) {
   const member = await memberRepository.findById(memberId);
   if (!member) {
@@ -51,8 +60,14 @@ async function getMember(memberId) {
   return member;
 }
 
+// controller-facing version of getMember; internal callers keep the raw row (no signing needed)
+async function getMemberDetails(memberId) {
+  return attachPhotoUrl(await getMember(memberId));
+}
+
 async function listMembers(filters) {
-  return memberRepository.findAll(filters);
+  const { rows, total } = await memberRepository.findAll(filters);
+  return { rows: await Promise.all(rows.map(attachPhotoUrl)), total };
 }
 
 // recorded churches for the main church suggestions
@@ -64,7 +79,8 @@ async function listChurches() {
 async function findDuplicates(firstName, lastName, excludeId = null) {
   const term = `${(firstName || "").trim()} ${(lastName || "").trim()}`.trim();
   if (term.replace(/\s/g, "").length < 2) return [];
-  return memberRepository.findNameMatches(term, excludeId);
+  const matches = await memberRepository.findNameMatches(term, excludeId);
+  return Promise.all(matches.map(attachPhotoUrl));
 }
 
 async function createMember(fields) {
@@ -188,8 +204,48 @@ async function markConnectionRemoved(memberId) {
   return memberRepository.markConnectionRemoved(memberId);
 }
 
+// processes + uploads a new photo, then removes the old object only after the DB points at the new one
+async function setMemberPhoto(memberId, file) {
+  const existing = await getMember(memberId); // 404 early if missing
+  if (!file) throw { status: 400, message: "Photo file is required", field: "photo" };
+
+  let processed;
+  try {
+    processed = await processProfilePhoto(file.buffer);
+  } catch {
+    throw { status: 400, message: "File is not a valid image", field: "photo" };
+  }
+
+  const newKey = `members/${randomUUID()}.webp`;
+  await r2Storage.uploadObject(newKey, processed, "image/webp");
+
+  let updated;
+  try {
+    updated = await memberRepository.updatePhotoKey(memberId, newKey);
+  } catch (err) {
+    await r2Storage.deleteObject(newKey).catch(() => {}); // don't leave an orphan if the DB write failed
+    throw err;
+  }
+
+  if (existing.photo_key) {
+    await r2Storage.deleteObject(existing.photo_key).catch((e) => console.error("Old photo cleanup failed:", e));
+  }
+  return attachPhotoUrl(updated);
+}
+
+// clears the DB reference first, then deletes the R2 object
+async function removeMemberPhoto(memberId) {
+  const existing = await getMember(memberId);
+  if (!existing.photo_key) return;
+  await memberRepository.updatePhotoKey(memberId, null);
+  await r2Storage.deleteObject(existing.photo_key).catch((e) => console.error("Photo cleanup failed:", e));
+}
+
 module.exports = {
   getMember,
+  getMemberDetails,
+  setMemberPhoto,
+  removeMemberPhoto,
   listMembers,
   createMember,
   updateMember,

@@ -1,4 +1,4 @@
-// frontend\src\components\ArchiveConnectMembersDialog.jsx
+// frontend\src\components\connect\ArchiveConnectMembersDialog.jsx
 
 import { useState, useEffect, useCallback } from "react";
 import { Archive, RotateCcw } from "lucide-react";

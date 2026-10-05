@@ -1,4 +1,4 @@
-// frontend\src\components\AddConnectMemberDialog.jsx
+// frontend\src\components\connect\AddConnectMemberDialog.jsx
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +13,7 @@ import {
   fetchDuplicateMembers,
   setMemberStatus,
   unassignConnector,
+  uploadMemberPhoto,
 } from "@/lib/api/members.js";
 import { AlertTriangle, UserPlus, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
@@ -43,6 +44,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog.jsx";
 import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
+import { PhotoPicker } from "@/components/PhotoPicker.jsx"; // optional photo
 
 const emptyDefaults = {
   first_name: "",
@@ -109,6 +111,7 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   const [addedOpen, setAddedOpen] = useState(false); // date added popover
   // today in PH time as YYYY-MM-DD, used as the max for the date input
   const phToday = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  const [photoFile, setPhotoFile] = useState(null);
   const [connectorId, setConnectorId] = useState("");
   const [mentorOptions, setMentorOptions] = useState([]);
   const [mentorsLoading, setMentorsLoading] = useState(false);
@@ -133,6 +136,7 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   useEffect(() => {
     if (open) {
       reset(emptyDefaults);
+      setPhotoFile(null);
       setConnectorId("");
       setNotDuplicate(false);
     }
@@ -266,6 +270,14 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
       if (connectorId) {
         await assignConnector(member.id, connectorId);
       }
+      // photo is its own request; a failure here must not hide that the member was created
+      if (photoFile) {
+        try {
+          await uploadMemberPhoto(member.id, photoFile);
+        } catch (photoErr) {
+          showError(`${photoErr.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
+        }
+      }
       toast.success("First-timer added to Connect");
       onSaved();
       onOpenChange(false);
@@ -382,6 +394,16 @@ export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
                 )}
               </div>
             )}
+
+            {/* photo picker, top of the form body */}
+            <div className="sm:col-span-3">
+              <PhotoPicker
+                file={photoFile}
+                onFileChange={setPhotoFile}
+                firstName={watch("first_name")}
+                lastName={watch("last_name")}
+              />
+            </div>
 
             {/* section: Personal */}
             <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground after:h-px after:flex-1 after:bg-border after:content-[''] sm:col-span-3">

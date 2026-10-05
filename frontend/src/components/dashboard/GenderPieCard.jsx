@@ -3,9 +3,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const GROUPS = [
   { key: "mentors", label: "Mentors" },
-  { key: "potentialMentors", label: "Potential mentors" },
+  { key: "potentialMentors", label: "Potential Mentors" },
   { key: "mentees", label: "Mentees" },
-  { key: "connect", label: "Connect" },
+  { key: "connect", label: "Pending Connect" },
 ];
 
 // when the OS asks for less motion, charts start in their final state and never animate
@@ -29,6 +29,17 @@ function Pie({ label, data, delay }) {
     return () => clearTimeout(id);
   }, []);
 
+  // which slice the mouse is over: "male" | "female" | null
+  const [hovered, setHovered] = useState(null);
+
+  // hovered slice scales up from the pie's center (16,16 in viewBox units)
+  const sliceStyle = (name) => ({
+    transform: hovered === name ? "scale(1.08)" : "scale(1)",
+    transformOrigin: "16px 16px",
+    transition: "transform 200ms ease-out",
+    cursor: "pointer",
+  });
+
   // percentage label sits at the middle of its slice (viewBox is 32 wide, center 16,16)
   const at = (deg) => {
     const rad = (deg * Math.PI) / 180;
@@ -37,8 +48,21 @@ function Pie({ label, data, delay }) {
   const [mx, my] = at(-90 + malePct * 1.8);
   const [fx, fy] = at(-90 + malePct * 3.6 + femalePct * 1.8);
 
+  // wedge from startPct to endPct (0-100, clockwise from 12 o'clock), radius 16 = same reach as the stroked ring
+  const wedge = (startPct, endPct) => {
+    const pt = (pct) => {
+      const rad = ((-90 + pct * 3.6) * Math.PI) / 180;
+      return [16 + 16 * Math.cos(rad), 16 + 16 * Math.sin(rad)];
+    };
+    const [x1, y1] = pt(startPct);
+    const [x2, y2] = pt(endPct);
+    const largeArc = endPct - startPct > 50 ? 1 : 0;
+    return `M16 16 L${x1} ${y1} A16 16 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  };
+
   // labels fade in after the sweep finishes
   const labelStyle = {
+    pointerEvents: "none", // text on top of a slice must not trigger mouseleave
     opacity: drawn ? 1 : 0,
     transition: `opacity 400ms ease-out ${delay + 700}ms`,
   };
@@ -47,7 +71,7 @@ function Pie({ label, data, delay }) {
     <div className="text-center">
       <svg
         viewBox="0 0 32 32"
-        className="mx-auto size-36"
+        className="mx-auto size-36 overflow-visible"
         role="img"
         aria-label={`${label}: ${male} male, ${female} female`}
       >
@@ -70,23 +94,42 @@ function Pie({ label, data, delay }) {
               stroke="var(--chart-female)"
               strokeWidth="16"
             />
+            {/* female slice as its own arc (starts where male ends), so only its wedge scales on hover */}
+            <g
+              style={sliceStyle("female")}
+              onMouseEnter={() => setHovered("female")}
+              onMouseLeave={() => setHovered(null)}
+            >
+              {/* femalePct 100 = full disc (a wedge path can't draw a full circle); otherwise an explicit wedge */}
+              {femalePct === 100 ? (
+                <circle cx="16" cy="16" r="16" fill="var(--chart-female)" />
+              ) : femalePct > 0 ? (
+                <path d={wedge(malePct, 100)} fill="var(--chart-female)" />
+              ) : null}
+            </g>
             {/* male slice grows from 0 to its share: dasharray goes "0 100" to "malePct rest" */}
-            <circle
-              cx="16"
-              cy="16"
-              r="8"
-              fill="none"
-              stroke="var(--chart-male)"
-              strokeWidth="16"
-              pathLength="100"
-              transform="rotate(-90 16 16)"
-              style={{
-                strokeDasharray: drawn
-                  ? `${malePct} ${100 - malePct}`
-                  : "0 100",
-                transition: `stroke-dasharray 900ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
-              }}
-            />
+            <g
+              style={sliceStyle("male")}
+              onMouseEnter={() => setHovered("male")}
+              onMouseLeave={() => setHovered(null)}
+            >
+              <circle
+                cx="16"
+                cy="16"
+                r="8"
+                fill="none"
+                stroke="var(--chart-male)"
+                strokeWidth="16"
+                pathLength="100"
+                transform="rotate(-90 16 16)"
+                style={{
+                  strokeDasharray: drawn
+                    ? `${malePct} ${100 - malePct}`
+                    : "0 100",
+                  transition: `stroke-dasharray 900ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+                }}
+              />
+            </g>
             {/* labels hidden on slices under 8%, the counts below the pie still show them */}
             {malePct >= 8 && (
               <text

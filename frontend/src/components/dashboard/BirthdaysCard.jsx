@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { MEMBER_STATUS_BADGE } from "@/lib/memberStatusLabels";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const ROLE_LABELS = { mentor: "Mentor", "potential mentor": "Potential Mentor", mentee: "Mentee" };
@@ -76,7 +77,11 @@ export function BirthdaysCard({ birthdays, loading, className = "" }) {
                   {g.people.map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2">
                       <span className="text-sm">{p.first_name} {p.last_name}</span>
-                      <Badge variant="secondary" className="whitespace-nowrap">
+                     
+                      <Badge
+                        variant="secondary"
+                        className={`whitespace-nowrap ${MEMBER_STATUS_BADGE[p.member_status] ?? ""}`}
+                      >
                         {ROLE_LABELS[p.member_status]}
                       </Badge>
                     </div>

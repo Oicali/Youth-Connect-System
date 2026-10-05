@@ -1,4 +1,4 @@
-// frontend/src/components/EditCareGroupMemberDialog.jsx
+// frontend\src\components\careGroup\EditCareGroupMemberDialog.jsx
 import { useEffect, useState, useMemo } from "react";
 import { AlertTriangle, Pencil, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -9,6 +9,7 @@ import { format, parse } from "date-fns";
 import { editMemberSchema } from "@/lib/validations/member.js";
 import {
   updateMember, setMemberStatus, assignMentor, unassignMentor, fetchMembers, fetchDuplicateMembers,
+  uploadMemberPhoto, deleteMemberPhoto,
 } from "@/lib/api/members.js";
 import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
@@ -27,7 +28,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog.jsx";
-import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
+import { scrollToFirstError } from "@/lib/scrollToFirstError.js";
+import { PhotoPicker } from "@/components/PhotoPicker.jsx";
 
 const STATUS_LABELS = {
   mentor: "Mentor",
@@ -112,6 +114,8 @@ export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved,
     defaultValues: toFormValues(member),
   });
 
+    const [photoFile, setPhotoFile] = useState(null); // newly cropped photo, uploaded on save
+  const [removePhoto, setRemovePhoto] = useState(false); // existing photo marked for deletion on save
   const [saving, setSaving] = useState(false);
   const [pendingValues, setPendingValues] = useState(null);   // form values held while the demote warning is up
   const [showDemoteWarning, setShowDemoteWarning] = useState(false);
@@ -124,6 +128,8 @@ export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved,
   useEffect(() => {
     if (!open) return;
     reset(toFormValues(member));
+    setPhotoFile(null); // fresh photo state for each member opened
+    setRemovePhoto(false);
     setSelectedMentorId(member?.mentor_id ? String(member.mentor_id) : "");
     setNotDuplicate(false); 
   }, [member, open, reset]);
@@ -207,6 +213,14 @@ export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved,
     let step = "profile";
     try {
       await updateMember(member.id, { ...profileFields, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
+
+      // photo changes are separate requests; a failure shouldn't mask that the details saved
+      try {
+        if (photoFile) await uploadMemberPhoto(member.id, photoFile);
+        else if (removePhoto) await deleteMemberPhoto(member.id);
+      } catch (photoErr) {
+        showError(`${photoErr.message}. Your other changes were saved.`, "Photo Not Updated");
+      }
 
       // separate endpoints by design — PUT /:id ignores member_status and mentor_id server-side
       if (statusChanged) {
@@ -337,6 +351,19 @@ export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved,
                   )}
                 </div>
               )}
+
+              {/* photo picker: current photo comes from the signed photo_url in the list response */}
+              <div className="sm:col-span-3">
+                <PhotoPicker
+                  currentUrl={member?.photo_url}
+                  file={photoFile}
+                  removed={removePhoto}
+                  onFileChange={setPhotoFile}
+                  onRemoveExisting={() => setRemovePhoto(true)}
+                  firstName={watch("first_name")}
+                  lastName={watch("last_name")}
+                />
+              </div>
 
               {/* section: Personal */}
               <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground after:h-px after:flex-1 after:bg-border after:content-[''] sm:col-span-3">

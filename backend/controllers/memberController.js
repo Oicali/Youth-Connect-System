@@ -4,8 +4,25 @@ const express = require("express");
 const memberService = require("../services/memberService");
 const requireAuth = require("../middleware/requireAuth");
 const requireRole = require("../middleware/requireRole");
+const multer = require("multer");
 
 const router = express.Router();
+
+// memory storage + 10 MB raw cap (sharp shrinks it later); real validation happens when sharp decodes
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith("image/")),
+});
+
+// wraps multer so its errors return JSON instead of falling through to Express's default handler
+function receivePhoto(req, res, next) {
+  upload.single("photo")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") return res.status(413).json({ message: "Photo must be 10 MB or smaller" });
+    return res.status(400).json({ message: "Invalid upload" });
+  });
+}
 
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -16,7 +33,7 @@ router.get("/", requireAuth, async (req, res) => {
       addedMonth: addedMonth ? Number(addedMonth) : undefined,
       page: page ? Number(page) : 1,
       // cap page size so ?limit=100000 can't dump the whole table
-      limit: limit ? Math.min(Number(limit), 100) : 15,
+      limit: limit ? Math.min(Number(limit), 100) : 10,
     });
     res.json({ members: rows, total });
   } catch (err) {
@@ -53,7 +70,7 @@ router.get("/duplicates", requireAuth, async (req, res) => {
 
 router.get("/:id", requireAuth, async (req, res) => {
   try {
-    const member = await memberService.getMember(req.params.id);
+    const member = await memberService.getMemberDetails(req.params.id); // includes signed photo_url
     res.json({ member });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
@@ -163,6 +180,30 @@ router.post("/:id/connection/remove", requireAuth, requireRole(["admin"]), async
   } catch (err) {
     if (err.status) return res.status(err.status).json({ message: err.message });
     console.error("Mark connection removed error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+// photo upload/replace; same admin-only rule as your other member writes
+router.post("/:id/photo", requireAuth, requireRole(["admin"]), receivePhoto, async (req, res) => {
+  try {
+    const member = await memberService.setMemberPhoto(req.params.id, req.file);
+    res.json({ member });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message, field: err.field });
+    console.error("Set member photo error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+// photo removal
+router.delete("/:id/photo", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    await memberService.removeMemberPhoto(req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    console.error("Remove member photo error:", err);
     res.status(500).json({ message: "Something went wrong" });
   }
 });

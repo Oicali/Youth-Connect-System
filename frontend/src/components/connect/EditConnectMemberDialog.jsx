@@ -1,4 +1,4 @@
-//frontend\src\components\EditConnectMemberDialog.jsx
+// frontend\src\components\connect\EditConnectMemberDialog.jsx
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { editConnectMemberSchema } from "@/lib/validations/member.js";
-import { updateMember, assignConnector, unassignConnector, fetchMembers, fetchDuplicateMembers } from "@/lib/api/members.js";
+import { updateMember, assignConnector, unassignConnector, fetchMembers, fetchDuplicateMembers, uploadMemberPhoto, deleteMemberPhoto } from "@/lib/api/members.js";
 import { AlertTriangle, Pencil, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge.jsx";
 import { Checkbox } from "@/components/ui/checkbox.jsx";
@@ -23,6 +23,7 @@ import { format, parse } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.jsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog.jsx";
 import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
+import { PhotoPicker } from "@/components/PhotoPicker.jsx"; // optional photo
 
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
 
@@ -97,6 +98,8 @@ export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved })
 
   // connector lives outside react-hook-form — it's saved via assignConnector/
   // unassignConnector, a different endpoint than PUT /members/:id
+  const [photoFile, setPhotoFile] = useState(null); // newly chosen photo, uploaded on save
+  const [removePhoto, setRemovePhoto] = useState(false); // existing photo marked for deletion on save
   const [connectorId, setConnectorId] = useState("");
   const [mentorOptions, setMentorOptions] = useState([]);
   const [mentorsLoading, setMentorsLoading] = useState(false);
@@ -113,6 +116,8 @@ export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved })
   useEffect(() => {
     if (open && member) {
       reset(buildDefaults(member));
+      setPhotoFile(null);
+      setRemovePhoto(false);
       setConnectorId(originalConnectorId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,6 +181,14 @@ export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved })
   const onSubmit = async (data) => {
     try {
       await updateMember(member.id, { ...data, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
+
+      // photo changes are separate requests; a failure shouldn't mask that the details saved
+      try {
+        if (photoFile) await uploadMemberPhoto(member.id, photoFile);
+        else if (removePhoto) await deleteMemberPhoto(member.id);
+      } catch (photoErr) {
+        showError(`${photoErr.message}. Your other changes were saved.`, "Photo Not Updated");
+      }
 
       if (!isRemoved && connectorId !== originalConnectorId) {
         if (connectorId) {
@@ -257,6 +270,19 @@ export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved })
                 )}
               </div>
             )}
+
+            {/* photo picker: current photo comes from the signed photo_url in the list response */}
+            <div className="sm:col-span-3">
+              <PhotoPicker
+                currentUrl={member?.photo_url}
+                file={photoFile}
+                removed={removePhoto}
+                onFileChange={setPhotoFile}
+                onRemoveExisting={() => setRemovePhoto(true)}
+                firstName={watch("first_name")}
+                lastName={watch("last_name")}
+              />
+            </div>
 
             {/* section: Personal */}
             <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground after:h-px after:flex-1 after:bg-border after:content-[''] sm:col-span-3">

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Compass, Sprout, GraduationCap, HeartHandshake } from "lucide-react";
+// HeartHandshake swapped for UserPlus on the Connect card
+import { Compass, Sprout, BookOpen, UserPlus } from "lucide-react";
+import confetti from "canvas-confetti";
 
 import { fetchDashboardSummary, fetchDashboardHistory } from "@/lib/api/dashboard";
 import { useErrorModal } from "@/context/ErrorModalContext";
@@ -11,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 // current year in PH time, the default for the year select
 const CURRENT_YEAR = Number(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }).slice(0, 4));
+
+let confettiFiredFor = null;
 
 export default function Dashboard() {
   const { showError } = useErrorModal();
@@ -43,6 +47,29 @@ export default function Dashboard() {
     return () => controller.abort();
   }, [year]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!summary?.birthdays?.some((b) => b.is_today)) return;
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+    if (confettiFiredFor === today) return;
+    confettiFiredFor = today;
+
+    const colors = ["#f59e0b", "#fbbf24", "#fde68a", "#38bdf8", "#a78bfa", "#4ade80"];
+    const end = Date.now() + 500;
+    let rafId;
+    const frame = () => {
+      // lower-corner cannons: bottom-left aims up-right, bottom-right aims up-left, both toward center
+      confetti({ particleCount: 5, angle: 60, spread: 55, startVelocity: 60, ticks: 200, origin: { x: 0, y: 1 }, colors, disableForReducedMotion: true });
+      confetti({ particleCount: 5, angle: 120, spread: 55, startVelocity: 60, ticks: 200, origin: { x: 1, y: 1 }, colors, disableForReducedMotion: true });
+      if (Date.now() < end) rafId = requestAnimationFrame(frame);
+    };
+    frame();
+    // leaving the page mid-burst stops the loop and clears the canvas
+    return () => {
+      cancelAnimationFrame(rafId);
+      confetti.reset();
+    };
+  }, [summary]);
+
   // pulls one column out of the 12 months; a missing month stays null so the line shows a gap
   const months = history?.months ?? [];
   const column = (key) =>
@@ -63,10 +90,11 @@ export default function Dashboard() {
 
       {/* headline numbers: 1 col on mobile, 2 on sm, 4 on xl */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Mentors" value={counts?.mentors} icon={Compass} loading={summaryLoading} />
-        <StatCard label="Potential mentors" value={counts?.potentialMentors} icon={Sprout} loading={summaryLoading} />
-        <StatCard label="Mentees" value={counts?.mentees} icon={GraduationCap} loading={summaryLoading} />
-        <StatCard label="Connect" value={counts?.connect} icon={HeartHandshake} loading={summaryLoading} />
+        {/* status colors come from the --status-* tokens in index.css */}
+        <StatCard label="Mentors" value={counts?.mentors} icon={Compass} loading={summaryLoading} badgeClass="bg-status-mentor/10" iconClass="text-status-mentor" />
+        <StatCard label="Potential mentors" value={counts?.potentialMentors} icon={Sprout} loading={summaryLoading} badgeClass="bg-status-potential/10" iconClass="text-status-potential" />
+        <StatCard label="Mentees" value={counts?.mentees} icon={BookOpen} loading={summaryLoading} badgeClass="bg-status-mentee/10" iconClass="text-status-mentee" />
+        <StatCard label="Pending Connect" value={counts?.connect} icon={UserPlus} loading={summaryLoading} badgeClass="bg-success/10" iconClass="text-success" />
       </div>
 
       <div className="flex flex-wrap items-stretch gap-4">
@@ -95,21 +123,21 @@ export default function Dashboard() {
         <div className="flex flex-wrap items-stretch gap-4">
           <LineChartCard
             className="flex-[1_1_420px]"
-            title="Care group size"
+            title="Care Group Size"
             subtitle="Total at the end of each month"
             loading={historyLoading}
             series={[
-              { name: "Mentors", color: "var(--chart-mentor)", values: column("mentors") },
-              { name: "Potential mentors", color: "var(--primary)", values: column("potential_mentors") },
-              { name: "Mentees", color: "var(--foreground)", values: column("mentees") },
+              { name: "Mentors", color: "var(--status-mentor)", values: column("mentors") },
+              { name: "Potential mentors", color: "var(--status-potential)", values: column("potential_mentors") },
+              { name: "Mentees", color: "var(--status-mentee)", values: column("mentees") },
             ]}
           />
           <LineChartCard
             className="flex-[1_1_420px]"
-            title="New first-timers"
+            title="Recorded Connects"
             subtitle="Added to Connect each month"
             loading={historyLoading}
-            series={[{ name: "First-timers added", color: "var(--success)", values: column("connect_new"), showValues: true }]}
+            series={[{ name: "Recorded Connect", color: "var(--success)", values: column("connect_new"), showValues: true }]}
           />
         </div>
       </section>

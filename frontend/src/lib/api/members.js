@@ -178,6 +178,31 @@ export async function unassignConnector(memberId) {
   return res.json(); // { member }
 }
 
+// uploads/replaces a member's photo (multipart); the field name must match upload.single("photo") on the backend
+export async function uploadMemberPhoto(id, file) {
+  const formData = new FormData();
+  formData.append("photo", file);
+  const res = await fetch(`${API_URL}/members/${id}/photo`, {
+    method: "POST",
+    credentials: "include",
+    body: formData, // no Content-Type header: the browser must set the multipart boundary itself
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to upload photo");
+  }
+  return res.json(); // { member }
+}
+
+// removes a member's photo (backend replies 204, no body)
+export async function deleteMemberPhoto(id) {
+  const res = await fetch(`${API_URL}/members/${id}/photo`, { method: "DELETE", credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to remove photo");
+  }
+}
+
 export async function markConnectionRemoved(memberId) {
   const res = await fetch(`${API_URL}/members/${memberId}/connection/remove`, {
     method: "POST",

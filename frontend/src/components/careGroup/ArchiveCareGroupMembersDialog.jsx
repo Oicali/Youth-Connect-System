@@ -1,4 +1,4 @@
-// frontend/src/components/ArchiveCareGroupMembersDialog.jsx
+// frontend\src\components\careGroup\ArchiveCareGroupMembersDialog.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
