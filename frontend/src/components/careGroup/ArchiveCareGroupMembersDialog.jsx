@@ -1,22 +1,22 @@
-// frontend/src/components/ArchiveMembersModal.jsx
+// frontend/src/components/ArchiveCareGroupMembersDialog.jsx
 import { useState, useEffect, useCallback } from "react";
 import { Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
-import { fetchMembers, setMemberStatus } from "@/lib/api/members";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { fetchMembers, setMemberStatus } from "@/lib/api/members.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input.jsx";
+import { Button } from "@/components/ui/button.jsx";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select.jsx";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog.jsx";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-} from "@/components/ui/table";
+} from "@/components/ui/table.jsx";
 
 const RESTORE_STATUS_LABELS = {
   mentee: "Mentee",
@@ -31,7 +31,7 @@ const formatDate = (dateStr) => {
   });
 };
 
-export function ArchiveMembersModal({ open, onOpenChange, onRestored }) {
+export function ArchiveCareGroupMembersDialog({ open, onOpenChange, onRestored }) {
   const { showError } = useErrorModal();
 
   const [members, setMembers] = useState([]);

@@ -3,13 +3,13 @@ import { useState, useEffect } from "react";
 import { Home } from "lucide-react";
 import { toast } from "sonner";
 
-import { fetchMembers, joinCareGroup } from "@/lib/api/members";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { fetchMembers, joinCareGroup } from "@/lib/api/members.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.jsx";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog.jsx";
 
 export function JoinCareGroupModal({ member, open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
@@ -20,7 +20,7 @@ export function JoinCareGroupModal({ member, open, onOpenChange, onSaved }) {
 
   useEffect(() => {
     if (!open || !member) { setMentorOptions([]); setMentorId(""); return; }
-    // mentors filtered by the member's own gender — same rule AddMemberModal uses
+    // mentors filtered by the member's own gender — same rule AddCareGroupMemberDialog uses
     setLoadingMentors(true);
     fetchMembers({ role: ["mentor"], gender: member.gender, limit: 50 })
       .then(({ members }) => setMentorOptions(members))

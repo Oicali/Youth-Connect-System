@@ -1,11 +1,11 @@
-// frontend/src/components/AddMemberModal.jsx
+// frontend/src/components/AddCareGroupMemberDialog.jsx
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 
-import { addMemberSchema } from "@/lib/validations/member";
+import { addMemberSchema } from "@/lib/validations/member.js";
 import {
   createMember,
   assignMentor,
@@ -13,35 +13,35 @@ import {
   fetchDuplicateMembers,
   setMemberStatus,
   unassignConnector,
-} from "@/lib/api/members";
+} from "@/lib/api/members.js";
 import {
   AlertTriangle,
   UserPlus,
   ExternalLink,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import { useErrorModal } from "@/context/ErrorModalContext";
-import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ChurchInput } from "@/components/ChurchInput"; // main church with suggestions
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { ChurchInput } from "@/components/ChurchInput.jsx"; // main church with suggestions
+import { Badge } from "@/components/ui/badge.jsx";
+import { Checkbox } from "@/components/ui/checkbox.jsx";
+import { Calendar } from "@/components/ui/calendar.jsx";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/components/ui/popover.jsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select.jsx";
 import {
   Dialog,
   DialogContent,
@@ -49,8 +49,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { scrollToFirstError } from "@/lib/scrollToFirstError"; // scroll to first field error on invalid submit
+} from "@/components/ui/dialog.jsx";
+import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
 
 const emptyDefaults = {
   member_status: "mentee",
@@ -128,7 +128,7 @@ const ProfileLinkButton = ({ url, label }) => {
   );
 };
 
-export function AddMemberModal({ open, onOpenChange, onSaved }) {
+export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
 
@@ -247,7 +247,7 @@ export function AddMemberModal({ open, onOpenChange, onSaved }) {
   const handleRestoreMatch = async (match) => {
     setRestoringId(match.id);
     try {
-      // restores to mentee by default — same safe default used in ArchiveMembersModal,
+      // restores to mentee by default — same safe default used in ArchiveCareGroupMembersDialog,
       // since it's the only restore target that never triggers a mentor-cascade
       await setMemberStatus(match.id, "mentee");
       toast.success(

@@ -1,13 +1,13 @@
-// frontend/src/pages/CareGroup.jsx
+// frontend/src/pages/careGroup.jsx
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Pencil, Trash2, Search as SearchIcon, Undo2, Users, User, UserPlus, Archive } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetchMembers, setMemberStatus } from "@/lib/api/members";
-import { AddMemberModal } from "@/components/AddMemberModal";
-import { EditMemberModal } from "@/components/EditMemberModal";
-import { ArchiveMembersModal } from "@/components/ArchiveMembersModal";
+import { AddCareGroupMemberDialog } from "@/components/careGroup/AddCareGroupMemberDialog.jsx";
+import { EditCareGroupMemberDialog } from "@/components/careGroup/EditCareGroupMemberDialog.jsx";
+import { ArchiveCareGroupMembersDialog } from "@/components/careGroup/ArchiveCareGroupMembersDialog.jsx";
 
 import { useErrorModal } from "@/context/ErrorModalContext";
 import {
@@ -544,19 +544,19 @@ export default function CareGroup() {
         </div>
       )}
 
-      <AddMemberModal
+      <AddCareGroupMemberDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onSaved={loadMembers}
       />
 
-      <ArchiveMembersModal
+      <ArchiveCareGroupMembersDialog
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
         onRestored={loadMembers}
       />
 
-      <EditMemberModal
+      <EditCareGroupMemberDialog
         member={editingMember}
         open={!!editingMember}
         onOpenChange={(o) => !o && setEditingMember(null)}

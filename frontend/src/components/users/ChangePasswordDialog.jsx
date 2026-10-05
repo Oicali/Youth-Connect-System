@@ -1,14 +1,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { changePasswordSchema } from "@/lib/validations/changePassword";
-import { changePassword } from "@/lib/api/profile";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { changePasswordSchema } from "@/lib/validations/changePassword.js";
+import { changePassword } from "@/lib/api/profile.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog.jsx";
 
 export function ChangePasswordDialog({ open, onOpenChange }) {
   const { showError } = useErrorModal();

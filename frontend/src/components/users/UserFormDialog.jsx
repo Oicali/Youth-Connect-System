@@ -6,21 +6,21 @@ import { toast } from "sonner";
 import { format, parse } from "date-fns";
 import { UserPlus, Pencil, Calendar as CalendarIcon } from "lucide-react";
 
-import { addUserSchema, editUserSchema } from "@/lib/validations/user";
-import { createUser, updateUser } from "@/lib/api/users";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { addUserSchema, editUserSchema } from "@/lib/validations/user.js";
+import { createUser, updateUser } from "@/lib/api/users.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { Calendar } from "@/components/ui/calendar.jsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.jsx";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select.jsx";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog.jsx";
 
 const emptyDefaults = {
   username: "", password: "", confirmPassword: "",

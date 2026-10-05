@@ -3,10 +3,10 @@ import { Search as SearchIcon, Undo2, UserPlus, HandHeart, Trash2, Archive, Penc
 import { toast } from "sonner";
 
 import { fetchMembers, markConnectionRemoved } from "@/lib/api/members";
-import { AddConnectMemberModal } from "@/components/AddConnectMemberModal";
-import { EditConnectMemberModal } from "@/components/EditConnectMemberModal";
-import { JoinCareGroupModal } from "@/components/JoinCareGroupModal";
-import { ArchiveConnectMembersModal } from "@/components/ArchiveConnectMembersModal";
+import { AddConnectMemberDialog } from "@/components/connect/AddConnectMemberDialog.jsx";
+import { EditConnectMemberDialog } from "@/components/connect/EditConnectMemberDialog.jsx";
+import { JoinCareGroupModal } from "@/components/careGroup/JoinCareGroupModal.jsx";
+import { ArchiveConnectMembersDialog } from "@/components/connect/ArchiveConnectMembersDialog.jsx";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -77,7 +77,7 @@ export default function Connect() {
         gender,
         // "active" = still in the Connect pipeline (pending or assigned) — excludes
         // full members (connection_status NULL) and archived ones (removed), which
-        // ArchiveConnectMembersModal handles separately
+        // ArchiveConnectMembersDialog handles separately
         connectionStatus: "active",
         hasAssigned: assigned === "yes" ? "true" : assigned === "no" ? "false" : undefined,
         addedMonth: month !== "all" ? month : undefined,
@@ -363,16 +363,16 @@ export default function Connect() {
         </div>
       )}
 
-      <AddConnectMemberModal open={addOpen} onOpenChange={setAddOpen} onSaved={loadMembers} />
+      <AddConnectMemberDialog open={addOpen} onOpenChange={setAddOpen} onSaved={loadMembers} />
 
-      <EditConnectMemberModal
+      <EditConnectMemberDialog
         member={editingMember}
         open={!!editingMember}
         onOpenChange={(o) => !o && setEditingMember(null)}
         onSaved={loadMembers}
       />
 
-      <ArchiveConnectMembersModal open={archiveOpen} onOpenChange={setArchiveOpen} onRestored={loadMembers} />
+      <ArchiveConnectMembersDialog open={archiveOpen} onOpenChange={setArchiveOpen} onRestored={loadMembers} />
 
 
       <JoinCareGroupModal

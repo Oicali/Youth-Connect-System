@@ -14,7 +14,7 @@ import carousel3 from "@/assets/carousel-3.avif";
 import carousel4 from "@/assets/carousel-4.avif";
 import carousel5 from "@/assets/carousel-5.avif";
 
-import { ImageCarousel } from "@/components/ImageCarousel";
+import { ImageCarousel } from "@/components/login/ImageCarousel.jsx";
 
 const carouselImages = [carousel1, carousel2, carousel3, carousel4, carousel5];
 

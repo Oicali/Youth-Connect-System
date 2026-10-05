@@ -11,8 +11,8 @@ import {
   Pagination, PaginationContent, PaginationItem,
   PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
-import { UserFormDialog } from "@/components/UserFormDialog";
-import { ArchiveUsersModal } from "@/components/ArchiveUsersModal";
+import { UserFormDialog } from "@/components/users/UserFormDialog.jsx";
+import { ArchiveUsersModal } from "@/components/users/ArchiveUsersModal.jsx";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import { toast } from "sonner";
 

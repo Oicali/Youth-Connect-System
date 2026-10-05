@@ -9,7 +9,7 @@ import { resetPasswordSchema } from "@/lib/validations/resetPassword";
 import { resetPassword } from "@/lib/api/auth";
 import { useErrorModal } from "@/context/ErrorModalContext";
 
-import { AuthHeading } from "@/components/AuthHeading";
+import { AuthHeading } from "@/components/login/AuthHeading.jsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

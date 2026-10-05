@@ -1,4 +1,4 @@
-// frontend/src/components/EditMemberModal.jsx
+// frontend/src/components/EditCareGroupMemberDialog.jsx
 import { useEffect, useState, useMemo } from "react";
 import { AlertTriangle, Pencil, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -6,28 +6,28 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { format, parse } from "date-fns";
 
-import { editMemberSchema } from "@/lib/validations/member";
+import { editMemberSchema } from "@/lib/validations/member.js";
 import {
   updateMember, setMemberStatus, assignMentor, unassignMentor, fetchMembers, fetchDuplicateMembers,
-} from "@/lib/api/members";
-import { useErrorModal } from "@/context/ErrorModalContext";
-import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
+} from "@/lib/api/members.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ChurchInput } from "@/components/ChurchInput"; // main church with suggestions
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { ChurchInput } from "@/components/ChurchInput.jsx"; // main church with suggestions
+import { Badge } from "@/components/ui/badge.jsx";
+import { Checkbox } from "@/components/ui/checkbox.jsx";
+import { Calendar } from "@/components/ui/calendar.jsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.jsx";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select.jsx";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
-import { scrollToFirstError } from "@/lib/scrollToFirstError"; // scroll to first field error on invalid submit
+} from "@/components/ui/dialog.jsx";
+import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
 
 const STATUS_LABELS = {
   mentor: "Mentor",
@@ -96,7 +96,7 @@ function toFormValues(member) {
   };
 }
 
-export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMentorAssignment = false }) {
+export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved, allowMentorAssignment = false }) {
   const { showError } = useErrorModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
 

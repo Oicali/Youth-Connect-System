@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, Bell, ChevronDown } from "lucide-react";
+import { Menu, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -10,11 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { logoutUser } from "@/lib/api/auth";
 
 export function Header({ onToggleCollapse }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // current user and theme state
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const initials = user
@@ -57,10 +60,7 @@ export function Header({ onToggleCollapse }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell size={18} />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" />
-        </Button>
+
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -74,6 +74,10 @@ export function Header({ onToggleCollapse }) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => navigate("/profile")}>
               Profile
+            </DropdownMenuItem>
+          
+            <DropdownMenuItem onClick={toggleTheme}>
+              {theme === "dark" ? "Light mode" : "Dark mode"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">

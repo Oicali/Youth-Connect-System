@@ -105,7 +105,7 @@ async function findAll({ search, role, gender, connectionStatus, hasAssigned, ad
   const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const offset = (page - 1) * limit;
 
-  // sort presets — default (status-priority) is what CareGroup's Mentors tab still
+  // sort presets — default (status-priority) is what careGroup's Mentors tab still
   // implicitly relies on; the other two are explicit opt-ins from specific pages
   const ORDER_CLAUSES = {
     no_mentor_first_updated: `(m.mentor_id IS NOT NULL) ASC, m.updated_at DESC, m.last_name ASC, m.first_name ASC`,
@@ -217,9 +217,9 @@ async function setMemberStatus(memberId, memberStatus) {
   return result.rows[0];
 }
 
-// pure CareGroup mentor assignment — does NOT touch connection_status.
+// pure careGroup mentor assignment — does NOT touch connection_status.
 // Use for (re)assigning a mentor to someone already in a care group.
-// First-time Connect -> CareGroup transitions go through joinCareGroup() instead.
+// First-time Connect -> careGroup transitions go through joinCareGroup() instead.
 async function assignMentor(menteeId, mentorId) {
   const result = await pool.query(
     `UPDATE members
@@ -242,7 +242,7 @@ async function unassignMentor(menteeId) {
   return result.rows[0];
 }
 
-// Connect -> CareGroup transition: assigns the official mentor AND closes out
+// Connect -> careGroup transition: assigns the official mentor AND closes out
 // the Connect pipeline in one shot (connection_status/assigned_to cleared).
 async function joinCareGroup(menteeId, mentorId) {
   const result = await pool.query(

@@ -3,17 +3,17 @@ import { useState, useEffect, useCallback } from "react";
 import { Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
-import { fetchUsers, setUserStatus } from "@/lib/api/users";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { fetchUsers, setUserStatus } from "@/lib/api/users.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input.jsx";
+import { Button } from "@/components/ui/button.jsx";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog.jsx";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-} from "@/components/ui/table";
+} from "@/components/ui/table.jsx";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";

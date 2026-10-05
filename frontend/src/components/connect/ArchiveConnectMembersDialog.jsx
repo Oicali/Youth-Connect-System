@@ -1,23 +1,23 @@
-// frontend\src\components\ArchiveConnectMembersModal.jsx
+// frontend\src\components\ArchiveConnectMembersDialog.jsx
 
 import { useState, useEffect, useCallback } from "react";
 import { Archive, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
-import { fetchMembers, unassignConnector } from "@/lib/api/members";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { fetchMembers, unassignConnector } from "@/lib/api/members.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input.jsx";
+import { Button } from "@/components/ui/button.jsx";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog.jsx";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table.jsx";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 };
 
-export function ArchiveConnectMembersModal({ open, onOpenChange, onRestored }) {
+export function ArchiveConnectMembersDialog({ open, onOpenChange, onRestored }) {
   const { showError } = useErrorModal();
 
   const [members, setMembers] = useState([]);

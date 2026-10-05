@@ -11,7 +11,7 @@ import { loginUser } from "@/lib/api/auth";
 import { useErrorModal } from "@/context/ErrorModalContext";
 
 // shared split-screen shell
-import { AuthHeading } from "@/components/AuthHeading";
+import { AuthHeading } from "@/components/login/AuthHeading.jsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

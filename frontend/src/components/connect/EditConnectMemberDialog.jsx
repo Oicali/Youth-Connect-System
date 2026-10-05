@@ -1,28 +1,28 @@
-//frontend\src\components\EditConnectMemberModal.jsx
+//frontend\src\components\EditConnectMemberDialog.jsx
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { editConnectMemberSchema } from "@/lib/validations/member";
-import { updateMember, assignConnector, unassignConnector, fetchMembers, fetchDuplicateMembers } from "@/lib/api/members";
+import { editConnectMemberSchema } from "@/lib/validations/member.js";
+import { updateMember, assignConnector, unassignConnector, fetchMembers, fetchDuplicateMembers } from "@/lib/api/members.js";
 import { AlertTriangle, Pencil, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
-import { useErrorModal } from "@/context/ErrorModalContext";
+import { Badge } from "@/components/ui/badge.jsx";
+import { Checkbox } from "@/components/ui/checkbox.jsx";
+import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ChurchInput } from "@/components/ChurchInput"; // main church with suggestions
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { ChurchInput } from "@/components/ChurchInput.jsx"; // main church with suggestions
+import { Calendar } from "@/components/ui/calendar.jsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.jsx";
 import { format, parse } from "date-fns";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { scrollToFirstError } from "@/lib/scrollToFirstError"; // scroll to first field error on invalid submit
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.jsx";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog.jsx";
+import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
 
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
 
@@ -84,7 +84,7 @@ const buildDefaults = (member) => ({
   added_at: member?.added_at ? String(member.added_at).slice(0, 10) : "", // prefill so saving doesn't change it
 });
 
-export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) {
+export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
   const [addedOpen, setAddedOpen] = useState(false); // date added popover
@@ -118,7 +118,7 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, member, reset]);
 
-  // fetch mentors for the current gender — mirrors AddConnectMemberModal, but the
+  // fetch mentors for the current gender — mirrors AddConnectMemberDialog, but the
   // currently-assigned connector may not be in this list (gender changed since
   // assignment, or they were assigned before the mentor-only rule existed);
   // originalConnectorLabel below covers that display case

@@ -10,6 +10,7 @@ const pool = require("./db");
 const authRoutes = require("./controllers/authController");
 const userRoutes = require("./controllers/userController");
 const memberRoutes = require("./controllers/memberController");
+const dashboardRoutes = require("./controllers/dashboardController");
 
 const app = express();
 
@@ -39,5 +40,6 @@ app.use(session({
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/members", memberRoutes);
+app.use("/dashboard", dashboardRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

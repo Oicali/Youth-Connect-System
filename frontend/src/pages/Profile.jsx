@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { ChangePasswordDialog } from "@/components/users/ChangePasswordDialog.jsx";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {

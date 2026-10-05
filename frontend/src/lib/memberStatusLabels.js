@@ -1,7 +1,7 @@
 // frontend/src/lib/memberStatusLabels.js
 
 // Single source of truth for "what state is this existing member/first-timer in" —
-// used by duplicate-detection warnings in AddMemberModal and AddConnectMemberModal.
+// used by duplicate-detection warnings in AddCareGroupMemberDialog and AddConnectMemberDialog.
 // member_status and connection_status are mutually exclusive in practice (see
 // memberRepository.js: joinCareGroup clears connection_status; Connect intake never
 // sets member_status until then) — so checking member_status first is safe.

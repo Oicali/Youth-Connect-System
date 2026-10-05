@@ -1,11 +1,11 @@
-// frontend\src\components\AddConnectMemberModal.jsx
+// frontend\src\components\AddConnectMemberDialog.jsx
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { addConnectMemberSchema } from "@/lib/validations/member";
+import { addConnectMemberSchema } from "@/lib/validations/member.js";
 import {
   createMember,
   assignConnector,
@@ -13,27 +13,27 @@ import {
   fetchDuplicateMembers,
   setMemberStatus,
   unassignConnector,
-} from "@/lib/api/members";
+} from "@/lib/api/members.js";
 import { AlertTriangle, UserPlus, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
-import { useErrorModal } from "@/context/ErrorModalContext";
-import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
+import { useErrorModal } from "@/context/ErrorModalContext.jsx";
+import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels.js";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ChurchInput } from "@/components/ChurchInput"; // main church with suggestions
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { ChurchInput } from "@/components/ChurchInput.jsx"; // main church with suggestions
+import { Calendar } from "@/components/ui/calendar.jsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.jsx";
 import { format, parse } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge.jsx";
+import { Checkbox } from "@/components/ui/checkbox.jsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select.jsx";
 import {
   Dialog,
   DialogContent,
@@ -41,8 +41,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { scrollToFirstError } from "@/lib/scrollToFirstError"; // scroll to first field error on invalid submit
+} from "@/components/ui/dialog.jsx";
+import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
 
 const emptyDefaults = {
   first_name: "",
@@ -103,7 +103,7 @@ const ProfileLinkButton = ({ url, label }) => {
   );
 };
 
-export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
+export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
   const [addedOpen, setAddedOpen] = useState(false); // date added popover
@@ -139,7 +139,7 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
   }, [open, reset]);
 
   // gender is required at Connect intake (see addConnectMemberSchema), so this
-  // only waits on the modal being open — same fetch pattern as AddMemberModal's mentor field
+  // only waits on the modal being open — same fetch pattern as AddCareGroupMemberDialog's mentor field
   const genderValue = watch("gender");
   // clickable profile links, null while the field isn't a recognizable link
   const facebookUrl = toSocialUrl(watch("facebook"), FACEBOOK_HOSTS);
@@ -168,7 +168,7 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
 
   // debounced name-collision check across ALL members (mentors, mentees, other
   // Connect entries, removed) — fetchMembers({search}) has no implicit role
-  // filter, same pattern as AddMemberModal
+  // filter, same pattern as AddCareGroupMemberDialog
   const firstNameValue = watch("first_name");
   const lastNameValue = watch("last_name");
   // debounced duplicate check; checkingDuplicates locks the submit button for the whole debounce + fetch window
@@ -260,7 +260,7 @@ export function AddConnectMemberModal({ open, onOpenChange, onSaved }) {
         connection_status: "pending",
         confirm_different_person: notDuplicate, // server re-checks unless confirmed
       });
-      // separate endpoint by design, same pattern AddMemberModal uses for mentor —
+      // separate endpoint by design, same pattern AddCareGroupMemberDialog uses for mentor —
       // assignConnector() also flips connection_status to 'assigned' server-side,
       // overwriting the 'pending' just set above, which is the correct end state
       if (connectorId) {
