@@ -25,6 +25,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ErrorModalProvider } from "@/context/ErrorModalContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppToaster } from "@/components/AppToaster";
 
 function App() {
@@ -51,14 +52,14 @@ function App() {
                     </AuthProvider>
                   }
                 >
-                  <Route element={<DashboardLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-
-                    <Route path="/connect" element={<Connect />} />
-                    <Route path="/caregroup" element={<CareGroup />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/users" element={<Users />} />
-                    <Route path="/profile" element={<Profile />} />
+                  <Route element={<ProtectedRoute />}>
+                    <Route element={<DashboardLayout />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/connect" element={<Connect />} />
+                      <Route path="/caregroup" element={<CareGroup />} />
+                      <Route path="/users" element={<Users />} />
+                      <Route path="/profile" element={<Profile />} />
+                    </Route>
                   </Route>
                 </Route>
               </Routes>

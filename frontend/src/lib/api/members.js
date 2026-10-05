@@ -45,6 +45,16 @@ export async function fetchDuplicateMembers(firstName, lastName, { excludeId, si
   return res.json(); // { members }
 }
 
+// distinct recorded churches, most used first, for the main church suggestions
+export async function fetchChurches() {
+  const res = await fetch(`${API_URL}/members/churches`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to load churches");
+  }
+  return res.json(); // { churches }
+}
+
 export async function createMember(data) {
   const res = await fetch(`${API_URL}/members`, {
     method: "POST",
@@ -56,6 +66,7 @@ export async function createMember(data) {
     const body = await res.json().catch(() => null);
     const err = new Error(body?.message || "Failed to create member");
     err.field = body?.field;
+    err.code = body?.code; // lets the modal react to DUPLICATE_NAME
     throw err;
   }
   return res.json(); // { member }
@@ -74,6 +85,7 @@ export async function updateMember(id, data) {
     const body = await res.json().catch(() => null);
     const err = new Error(body?.message || "Failed to update member");
     err.field = body?.field;
+    err.code = body?.code; // lets the modal react to DUPLICATE_NAME
     throw err;
   }
   return res.json(); // { member }

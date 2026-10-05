@@ -26,6 +26,17 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
+// also ABOVE "/:id", same reason as "/duplicates"
+router.get("/churches", requireAuth, async (req, res) => {
+  try {
+    const churches = await memberService.listChurches();
+    res.json({ churches });
+  } catch (err) {
+    console.error("List churches error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
 // must stay ABOVE "/:id", or Express matches "duplicates" as an id
 router.get("/duplicates", requireAuth, async (req, res) => {
   try {
@@ -56,7 +67,7 @@ router.post("/", requireAuth, requireRole(["admin"]), async (req, res) => {
     const created = await memberService.createMember(req.body);
     res.status(201).json({ member: created });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ message: err.message, field: err.field });
+    if (err.status) return res.status(err.status).json({ message: err.message, field: err.field, code: err.code });
     console.error("Create member error:", err);
     res.status(500).json({ message: "Something went wrong" });
   }
@@ -67,7 +78,7 @@ router.put("/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
     const updated = await memberService.updateMember(req.params.id, req.body);
     res.json({ member: updated });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ message: err.message, field: err.field });
+    if (err.status) return res.status(err.status).json({ message: err.message, field: err.field, code: err.code });
     console.error("Update member error:", err);
     res.status(500).json({ message: "Something went wrong" });
   }

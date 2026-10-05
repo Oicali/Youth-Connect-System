@@ -16,7 +16,9 @@ import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ChurchInput } from "@/components/ChurchInput"; // main church with suggestions
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -25,6 +27,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { scrollToFirstError } from "@/lib/scrollToFirstError"; // scroll to first field error on invalid submit
 
 const STATUS_LABELS = {
   mentor: "Mentor",
@@ -112,12 +115,17 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
   const [saving, setSaving] = useState(false);
   const [pendingValues, setPendingValues] = useState(null);   // form values held while the demote warning is up
   const [showDemoteWarning, setShowDemoteWarning] = useState(false);
-  const [duplicateMatches, setDuplicateMatches] = useState([]); // warning only, never blocks saving
+  const [duplicateMatches, setDuplicateMatches] = useState([]); // partial matches warn; an exact match locks Save until confirmed
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false); // true from keystroke until the lookup settles
+  const [notDuplicate, setNotDuplicate] = useState(false); // user confirmed the match is a different person
+  const [checkFailed, setCheckFailed] = useState(false); // lookup errored: unknown is NOT "no duplicates", so Save stays locked
+  const [recheckKey, setRecheckKey] = useState(0); // bump to re-run the duplicate lookup (Retry button, server 409)
 
   useEffect(() => {
     if (!open) return;
     reset(toFormValues(member));
     setSelectedMentorId(member?.mentor_id ? String(member.mentor_id) : "");
+    setNotDuplicate(false); 
   }, [member, open, reset]);
 
   // gender drives the mentor list — refetch on any live change, not just the member's saved gender
@@ -156,24 +164,35 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
   // debounced name check, only when the name differs from the saved one; excludes this member's own row
   const firstNameValue = watch("first_name");
   const lastNameValue = watch("last_name");
-  useEffect(() => {
-    if (!open || !member) { setDuplicateMatches([]); return; }
+    useEffect(() => {
+    setNotDuplicate(false); // any name change invalidates the earlier "different person" confirmation
+    setCheckFailed(false); // new attempt clears the previous failure
+    if (!open || !member) { setDuplicateMatches([]); setCheckingDuplicates(false); return; }
     const first = (firstNameValue || "").trim();
     const last = (lastNameValue || "").trim();
     const unchanged =
       first.toLowerCase() === (member.first_name || "").trim().toLowerCase() &&
       last.toLowerCase() === (member.last_name || "").trim().toLowerCase();
-    if (unchanged || (first + last).length < 2) { setDuplicateMatches([]); return; }
+    if (unchanged || (first + last).length < 2) { setDuplicateMatches([]); setCheckingDuplicates(false); return; }
 
     let cancelled = false;
+    setCheckingDuplicates(true);
     const timer = setTimeout(() => {
       fetchDuplicateMembers(first, last, { excludeId: member.id })
         .then(({ members }) => { if (!cancelled) setDuplicateMatches(members); })
-        .catch(() => { if (!cancelled) setDuplicateMatches([]); });
+        .catch(() => { if (!cancelled) { setDuplicateMatches([]); setCheckFailed(true); } }) // fail closed
+        .finally(() => { if (!cancelled) setCheckingDuplicates(false); });
     }, 400);
 
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [open, member, firstNameValue, lastNameValue]);
+  }, [open, member, firstNameValue, lastNameValue, recheckKey]);
+
+  // only an exact full-name match locks Save; partial matches stay warnings
+  const exactMatch = duplicateMatches.some(
+    (m) =>
+      m.first_name.trim().toLowerCase() === (firstNameValue || "").trim().toLowerCase() &&
+      m.last_name.trim().toLowerCase() === (lastNameValue || "").trim().toLowerCase(),
+  );
 
   const doSubmit = async (values, { cascadeUnassignMentees = false } = {}) => {
     const { member_status, ...profileFields } = values;
@@ -187,7 +206,7 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
     // not just "something went wrong" — profile/status can succeed while mentor assignment fails
     let step = "profile";
     try {
-      await updateMember(member.id, profileFields);
+      await updateMember(member.id, { ...profileFields, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
 
       // separate endpoints by design — PUT /:id ignores member_status and mentor_id server-side
       if (statusChanged) {
@@ -206,8 +225,10 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
     } catch (err) {
       if (err.field) {
         setError(err.field, { type: "server", message: err.message });
+        scrollToFirstError();
       } else if (step === "profile") {
         showError(err.message, "Could Not Update Member");
+        if (err.code === "DUPLICATE_NAME") setRecheckKey((k) => k + 1); // surface the warning panel + checkbox
       } else if (step === "status") {
         showError(
           `Profile details were saved, but the status change failed: ${err.message}`,
@@ -271,10 +292,17 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit(handleFormSubmit)} className="flex min-h-0 flex-1 flex-col" noValidate>
+          <form onSubmit={handleSubmit(handleFormSubmit, scrollToFirstError)} className="flex min-h-0 flex-1 flex-col" noValidate>
             {/* scrollable body: 1 column on mobile, 3 columns on sm+ */}
             <div className="grid flex-1 grid-cols-1 content-start gap-4 overflow-y-auto px-7 py-5 sm:grid-cols-3">
               {/* warning only: editing an existing record, so no lock and no override checkbox */}
+              {checkFailed && (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive sm:col-span-3">
+                  <span>Couldn't check for duplicate names.</span>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setRecheckKey((k) => k + 1)}>Retry</Button>
+                </div>
+              )}
+
               {duplicateMatches.length > 0 && (
                 <div className="space-y-2 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 sm:col-span-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-yellow-600">
@@ -294,6 +322,19 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
                       );
                     })}
                   </ul>
+                  {/* only for an exact name match, the only case that locks Save */}
+                  {exactMatch && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Checkbox
+                        id="not-duplicate-edit"
+                        checked={notDuplicate}
+                        onCheckedChange={(v) => setNotDuplicate(v === true)}
+                      />
+                      <Label htmlFor="not-duplicate-edit" className="cursor-pointer font-normal">
+                        This is a different person
+                      </Label>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -312,7 +353,7 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
                 {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Gender</Label>
+                <Label>Gender <span className="text-destructive">*</span></Label>
                 <Select value={watch("gender")} onValueChange={(v) => setValue("gender", v, { shouldValidate: true })}>
                   <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                     <SelectValue placeholder="Select gender">{GENDER_LABELS_FORM[watch("gender")]}</SelectValue>
@@ -404,7 +445,7 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
               </div>
               <div className="space-y-2">
                 <Label>Main church</Label>
-                <Input {...register("main_church")} />
+                <ChurchInput value={watch("main_church")} onChange={(v) => setValue("main_church", v, { shouldDirty: true })} />
               </div>
               <div className="space-y-2">
                 <Label>Ministry</Label>
@@ -450,7 +491,9 @@ export function EditMemberModal({ member, open, onOpenChange, onSaved, allowMent
             {/* pinned footer bar, outside the scrolling body */}
             <DialogFooter className="border-t bg-muted/30 px-7 py-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
+              <Button type="submit" disabled={saving || checkingDuplicates || checkFailed || (exactMatch && !notDuplicate)}>
+                {saving ? "Saving..." : checkingDuplicates ? "Checking..." : "Save changes"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

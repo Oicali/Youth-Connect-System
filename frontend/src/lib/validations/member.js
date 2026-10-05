@@ -8,13 +8,13 @@ const memberBaseSchema = z.object({
   // instead of silently passing as whitespace — trimming and validation stay consistent
   first_name: z.string().trim().min(1, "First name is required").max(100),
   last_name: z.string().trim().min(1, "Last name is required").max(100),
-  gender: z.string().trim().optional().or(z.literal("")),
+  gender: z.string().trim().min(1, "Gender is required"),
   birth_date: z.string().optional().or(z.literal("")), // date input, no free text to trim
   added_at: z.string().optional().or(z.literal("")), // optional backdate; empty = server decides
   address: z.string().trim().optional().or(z.literal("")),
   phone_num: z.string().trim().max(30).optional().or(z.literal("")), 
   alt_phone: z.string().trim().max(30).optional().or(z.literal("")),
-  main_church: z.string().trim().max(255).optional().or(z.literal("")),
+  main_church: z.string().trim().min(1, "Main church is required").max(255), // required in add + edit
   ministry: z.string().trim().max(255).optional().or(z.literal("")),
   facebook: z.string().trim().max(255).optional().or(z.literal("")),
   instagram: z.string().trim().max(255).optional().or(z.literal("")),
@@ -48,8 +48,6 @@ export const editMemberSchema = withAltPhoneCheck(withStatus(memberBaseSchema));
 // gender is required here (unlike memberBaseSchema) because JoinCareGroupModal filters
 // mentors by gender — a first-timer with no gender on file can't be moved into a care
 // group without the Connect team picking gender first, so we force it at intake instead.
-const connectMemberSchema = memberBaseSchema.extend({
-  gender: z.string().trim().min(1, "Gender is required"),
-});
 
-export const addConnectMemberSchema = withAltPhoneCheck(connectMemberSchema);
+
+export const addConnectMemberSchema = withAltPhoneCheck(memberBaseSchema);

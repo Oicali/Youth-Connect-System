@@ -9,17 +9,20 @@ import { editConnectMemberSchema } from "@/lib/validations/member";
 import { updateMember, assignConnector, unassignConnector, fetchMembers, fetchDuplicateMembers } from "@/lib/api/members";
 import { AlertTriangle, Pencil, ExternalLink, Calendar as CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getDuplicateStatusLabel } from "@/lib/memberStatusLabels";
 import { useErrorModal } from "@/context/ErrorModalContext";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ChurchInput } from "@/components/ChurchInput"; // main church with suggestions
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parse } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { scrollToFirstError } from "@/lib/scrollToFirstError"; // scroll to first field error on invalid submit
 
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
 
@@ -97,7 +100,11 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
   const [connectorId, setConnectorId] = useState("");
   const [mentorOptions, setMentorOptions] = useState([]);
   const [mentorsLoading, setMentorsLoading] = useState(false);
-  const [duplicateMatches, setDuplicateMatches] = useState([]); // warning only, never blocks saving
+  const [duplicateMatches, setDuplicateMatches] = useState([]); // partial matches warn; an exact match locks Save until confirmed
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false); // true from keystroke until the lookup settles
+  const [notDuplicate, setNotDuplicate] = useState(false); // user confirmed the match is a different person
+  const [checkFailed, setCheckFailed] = useState(false); // lookup errored: unknown is NOT "no duplicates", so Save stays locked
+  const [recheckKey, setRecheckKey] = useState(0); // bump to re-run the duplicate lookup (Retry button, server 409)
   const originalConnectorId = member?.assigned_to ? String(member.assigned_to) : "";
   const originalConnectorLabel = member?.connector_first_name
     ? `${member.connector_first_name} ${member.connector_last_name}`
@@ -134,30 +141,41 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
   const firstNameValue = watch("first_name");
   const lastNameValue = watch("last_name");
   useEffect(() => {
-    if (!open || !member) { setDuplicateMatches([]); return; }
+    setNotDuplicate(false); // any name change invalidates the earlier "different person" confirmation
+    setCheckFailed(false); // new attempt clears the previous failure
+    if (!open || !member) { setDuplicateMatches([]); setCheckingDuplicates(false); return; }
     const first = (firstNameValue || "").trim();
     const last = (lastNameValue || "").trim();
     const unchanged =
       first.toLowerCase() === (member.first_name || "").trim().toLowerCase() &&
       last.toLowerCase() === (member.last_name || "").trim().toLowerCase();
-    if (unchanged || (first + last).length < 2) { setDuplicateMatches([]); return; }
+    if (unchanged || (first + last).length < 2) { setDuplicateMatches([]); setCheckingDuplicates(false); return; }
 
     let cancelled = false;
+    setCheckingDuplicates(true);
     const timer = setTimeout(() => {
       fetchDuplicateMembers(first, last, { excludeId: member.id })
         .then(({ members }) => { if (!cancelled) setDuplicateMatches(members); })
-        .catch(() => { if (!cancelled) setDuplicateMatches([]); });
+        .catch(() => { if (!cancelled) { setDuplicateMatches([]); setCheckFailed(true); } }) // fail closed
+        .finally(() => { if (!cancelled) setCheckingDuplicates(false); });
     }, 400);
 
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [open, member, firstNameValue, lastNameValue]);
+  }, [open, member, firstNameValue, lastNameValue, recheckKey]);
+
+  // only an exact full-name match locks Save; partial matches stay warnings
+  const exactMatch = duplicateMatches.some(
+    (m) =>
+      m.first_name.trim().toLowerCase() === (firstNameValue || "").trim().toLowerCase() &&
+      m.last_name.trim().toLowerCase() === (lastNameValue || "").trim().toLowerCase(),
+  );
 
   // removed members have no active pipeline state — connector editing doesn't apply
   const isRemoved = member?.connection_status === "removed";
 
   const onSubmit = async (data) => {
     try {
-      await updateMember(member.id, data);
+      await updateMember(member.id, { ...data, confirm_different_person: notDuplicate }); // server re-checks unless confirmed
 
       if (!isRemoved && connectorId !== originalConnectorId) {
         if (connectorId) {
@@ -172,6 +190,7 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
       onOpenChange(false);
     } catch (err) {
       showError(err.message, "Could Not Update Member");
+      if (err.code === "DUPLICATE_NAME") setRecheckKey((k) => k + 1); // surface the warning panel + checkbox
     }
   };
 
@@ -193,10 +212,17 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
             </div>
           </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <form onSubmit={handleSubmit(onSubmit, scrollToFirstError)} className="flex min-h-0 flex-1 flex-col" noValidate>
           {/* scrollable body: 1 column on mobile, 3 columns on sm+ */}
           <div className="grid flex-1 grid-cols-1 content-start gap-4 overflow-y-auto px-7 py-5 sm:grid-cols-3">
-            {/* warning only: editing an existing record, so no lock and no override checkbox */}
+            {/* lookup failed: Save stays locked until a retry succeeds */}
+            {checkFailed && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive sm:col-span-3">
+                <span>Couldn't check for duplicate names.</span>
+                <Button type="button" size="sm" variant="outline" onClick={() => setRecheckKey((k) => k + 1)}>Retry</Button>
+              </div>
+            )}
+
             {duplicateMatches.length > 0 && (
               <div className="space-y-2 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 sm:col-span-3">
                 <div className="flex items-center gap-2 text-sm font-medium text-yellow-600">
@@ -216,6 +242,19 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
                     );
                   })}
                 </ul>
+                {/* only for an exact name match, the only case that locks Save */}
+                {exactMatch && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Checkbox
+                      id="not-duplicate-edit-connect"
+                      checked={notDuplicate}
+                      onCheckedChange={(v) => setNotDuplicate(v === true)}
+                    />
+                    <Label htmlFor="not-duplicate-edit-connect" className="cursor-pointer font-normal">
+                      This is a different person
+                    </Label>
+                  </div>
+                )}
               </div>
             )}
 
@@ -325,8 +364,9 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
               Church &amp; follow-up
             </div>
             <div className="space-y-2">
-              <Label>Main church</Label>
-              <Input {...register("main_church")} />
+              <Label>Main church <span className="text-destructive">*</span></Label>
+              <ChurchInput value={watch("main_church")} onChange={(v) => setValue("main_church", v, { shouldDirty: true, shouldValidate: true })} />
+              {errors.main_church && <p className="text-sm text-destructive">{errors.main_church.message}</p>} {/* required error */}
             </div>
             <div className="space-y-2">
               <Label>Ministry</Label>
@@ -407,7 +447,9 @@ export function EditConnectMemberModal({ member, open, onOpenChange, onSaved }) 
           {/* pinned footer bar, outside the scrolling body */}
           <DialogFooter className="border-t bg-muted/30 px-7 py-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save changes"}</Button>
+            <Button type="submit" disabled={isSubmitting || checkingDuplicates || checkFailed || (exactMatch && !notDuplicate)}>
+              {isSubmitting ? "Saving..." : checkingDuplicates ? "Checking..." : "Save changes"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

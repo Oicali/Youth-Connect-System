@@ -402,7 +402,7 @@ export default function CareGroup() {
                   <TableCell className="pl-4">
                     {m.first_name} {m.last_name}
                   </TableCell>
-                  <TableCell>{m.phone_num}</TableCell>
+                  <TableCell>{m.phone_num || "—"}</TableCell> 
                   <TableCell className="capitalize">{m.gender}</TableCell>
 
                   {isMenteesTab && (

@@ -15,6 +15,25 @@ async function checkPhoneConflicts(phone, altPhone, excludeMemberId = null) {
   throw { status: 409, message: "This phone number is already registered to another member", field: "alt_phone" };
 }
 
+// swaps a typed church for its existing spelling ("Sm molino" becomes "SM Molino"); a new church is kept, trimmed
+async function canonicalizeChurch(fields) {
+  const church = (fields.main_church || "").trim();
+  if (!church) throw { status: 400, message: "Main church is required", field: "main_church" };
+  fields.main_church = (await memberRepository.findCanonicalChurch(church)) || church;
+}
+
+// server-side duplicate guard: 409 on an exact name match unless the client confirmed it's a different person
+async function checkNameConflict(fields, excludeId = null) {
+  if (fields.confirm_different_person === true) return; // strict boolean, "true" strings don't count
+  const first = (fields.first_name || "").trim();
+  const last = (fields.last_name || "").trim();
+  if (!first || !last) return;
+  const match = await memberRepository.findExactNameMatch(first, last, excludeId);
+  if (match) {
+    throw { status: 409, code: "DUPLICATE_NAME", message: "A member with this exact name already exists" };
+  }
+}
+
 // server-side guard: rejects future added_at, compared as YYYY-MM-DD in PH time
 function validateAddedAt(addedAt) {
   if (!addedAt) return;
@@ -36,6 +55,11 @@ async function listMembers(filters) {
   return memberRepository.findAll(filters);
 }
 
+// recorded churches for the main church suggestions
+async function listChurches() {
+  return memberRepository.findChurches();
+}
+
 // name-only duplicate lookup; excludeId lets the edit modal skip the member being edited
 async function findDuplicates(firstName, lastName, excludeId = null) {
   const term = `${(firstName || "").trim()} ${(lastName || "").trim()}`.trim();
@@ -46,6 +70,8 @@ async function findDuplicates(firstName, lastName, excludeId = null) {
 async function createMember(fields) {
   validateAddedAt(fields.added_at);
   await checkPhoneConflicts(fields.phone_num, fields.alt_phone, null);
+  await checkNameConflict(fields, null); // exact-name duplicate guard
+  await canonicalizeChurch(fields); // one spelling per church
 
   try {
     return await memberRepository.create(fields);
@@ -60,6 +86,14 @@ async function createMember(fields) {
 async function updateMember(memberId, fields) {
   validateAddedAt(fields.added_at); // reject future dates before touching the DB
   await checkPhoneConflicts(fields.phone_num, fields.alt_phone, memberId);
+
+  // only check when the name changed, otherwise pre-existing duplicates could never be edited
+  const existing = await getMember(memberId); // 404 early if missing
+  const norm = (s) => (s || "").trim().toLowerCase();
+  const nameChanged =
+    norm(existing.first_name) !== norm(fields.first_name) || norm(existing.last_name) !== norm(fields.last_name);
+  if (nameChanged) await checkNameConflict(fields, memberId);
+  await canonicalizeChurch(fields); // one spelling per church
 
   try {
     const updated = await memberRepository.updateById(memberId, fields);
@@ -167,4 +201,5 @@ module.exports = {
   unassignConnector,
   markConnectionRemoved,
   findDuplicates,
+  listChurches,
 };

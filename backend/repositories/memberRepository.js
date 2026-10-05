@@ -305,6 +305,37 @@ async function findPhoneConflict(phone, altPhone, excludeMemberId = null) {
   return result.rows;
 }
 
+// the most-used existing spelling of a church, matched ignoring case and outer spaces; null if it's new
+async function findCanonicalChurch(church) {
+  const result = await pool.query(
+    `SELECT main_church FROM members
+     WHERE LOWER(TRIM(main_church)) = LOWER(TRIM($1))
+     GROUP BY main_church
+     ORDER BY COUNT(*) DESC, main_church
+     LIMIT 1`,
+    [church]
+  );
+  return result.rows[0]?.main_church.trim() || null;
+}
+
+// distinct churches, grouped ignoring case/spaces; most-used spelling represents each group, most-used church first
+async function findChurches() {
+  const result = await pool.query(
+    `SELECT TRIM(church) AS church FROM (
+       SELECT main_church AS church,
+              ROW_NUMBER() OVER (PARTITION BY LOWER(TRIM(main_church)) ORDER BY COUNT(*) DESC, main_church) AS rn,
+              SUM(COUNT(*)) OVER (PARTITION BY LOWER(TRIM(main_church))) AS total
+       FROM members
+       WHERE main_church IS NOT NULL AND TRIM(main_church) <> ''
+       GROUP BY main_church
+     ) t
+     WHERE rn = 1
+     ORDER BY total DESC, church ASC
+     LIMIT 200`
+  );
+  return result.rows.map((r) => r.church);
+}
+
 // partial name match on the member's OWN full name; excludeId skips the record being edited
 async function findNameMatches(term, excludeId = null) {
   const escaped = term.replace(/[\\%_]/g, "\\$&"); // escape LIKE wildcards typed by the user
@@ -322,11 +353,23 @@ async function findNameMatches(term, excludeId = null) {
   return result.rows;
 }
 
+// exact first+last match (trim + case-insensitive, any status); excludeId skips the record being edited
+async function findExactNameMatch(firstName, lastName, excludeId = null) {
+  const result = await pool.query(
+    `SELECT id FROM members
+     WHERE LOWER(TRIM(first_name)) = LOWER($1) AND LOWER(TRIM(last_name)) = LOWER($2)
+       AND ($3::bigint IS NULL OR id != $3)
+     LIMIT 1`,
+    [firstName, lastName, excludeId]
+  );
+  return result.rows[0] || null;
+}
+
 // bulk-unassigns everyone under this mentor — used when demoting a mentor away from "mentor" status
 async function unassignAllMenteesOfMentor(mentorId) {
   const result = await pool.query(
     `UPDATE members
-     SET mentor_id = NULL, connection_status = 'removed', updated_at = CURRENT_DATE
+     SET mentor_id = NULL, updated_at = CURRENT_DATE
      WHERE mentor_id = $1
      RETURNING id`,
     [mentorId]
@@ -349,4 +392,7 @@ module.exports = {
   unassignAllMenteesOfMentor,
   findPhoneConflict,
   findNameMatches,
+  findExactNameMatch,
+  findChurches,
+  findCanonicalChurch,
 };
