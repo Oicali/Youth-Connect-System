@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { fetchMembers, markConnectionRemoved } from "@/lib/api/members";
 import { AddConnectMemberDialog } from "@/components/connect/AddConnectMemberDialog.jsx";
 import { EditConnectMemberDialog } from "@/components/connect/EditConnectMemberDialog.jsx";
-import { JoinCareGroupModal } from "@/components/careGroup/JoinCareGroupModal.jsx";
+import { JoinCareGroupModal } from "@/components/connect/JoinCareGroupModal.jsx";
 import { ArchiveConnectMembersDialog } from "@/components/connect/ArchiveConnectMembersDialog.jsx";
 import { useErrorModal } from "@/context/ErrorModalContext";
 import { useLoadingModal } from "@/context/LoadingModalContext";
@@ -83,6 +83,12 @@ const formatDate = (dateStr) => {
   });
 };
 
+// builds the "First Last" label for the assigned connector, or a dash if none
+const getConnectorName = (m) =>
+  m.connector_first_name
+    ? `${m.connector_first_name} ${m.connector_last_name}`
+    : "—";
+
 const LIMIT = 10;
 
 export default function Connect() {
@@ -130,7 +136,7 @@ const { runWithLoading } = useLoadingModal();
           assigned === "yes" ? "true" : assigned === "no" ? "false" : undefined,
         addedMonth: month !== "all" ? month : undefined,
         addedYear: year !== "all" ? year : undefined,
-        sort: "no_assigned_first_added",
+        sort: "newest_added_by_church",
         page,
         limit: LIMIT,
         signal: controller.signal,
@@ -371,7 +377,7 @@ const { runWithLoading } = useLoadingModal();
               <TableHead>Gender</TableHead>
               <TableHead>Assigned To</TableHead>
               <TableHead>Main Church</TableHead>
-              <TableHead>Created At</TableHead>
+              <TableHead>Connected At</TableHead>
               <TableHead className="pr-8 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -421,22 +427,29 @@ const { runWithLoading } = useLoadingModal();
                 <TableRow key={m.id}>
                   <TableCell className="pl-4">
                     {/* avatar + name; photo_url is a short-lived signed URL from the API */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex max-w-[260px] items-center gap-3"> {/* caps the Name column width */}
                       
-<MemberAvatar url={m.photo_url} firstName={m.first_name} lastName={m.last_name} previewable />
-                      <span>
+<div className="shrink-0"> {/* keeps the avatar from being squeezed when the name is long */}
+  <MemberAvatar url={m.photo_url} firstName={m.first_name} lastName={m.last_name} previewable />
+</div>
+                      <span className="min-w-0 truncate" title={`${m.first_name} ${m.last_name}`}> {/* ellipsis on overflow, full name on hover */}
                         {m.first_name} {m.last_name}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{m.phone_num || "—"}</TableCell>
-                  <TableCell className="capitalize">{m.gender}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {m.connector_first_name
-                      ? `${m.connector_first_name} ${m.connector_last_name}`
-                      : "—"}
+                  {/* capped width, ellipsis on overflow, full number on hover */}
+                  <TableCell className="max-w-[140px] truncate" title={m.phone_num || undefined}>
+                    {m.phone_num || "—"}
                   </TableCell>
-                  <TableCell>{m.main_church || "—"}</TableCell>
+                  <TableCell className="capitalize">{m.gender}</TableCell>
+                  {/* capped width, ellipsis on overflow, full name on hover */}
+                  <TableCell
+                    className="max-w-[200px] truncate text-muted-foreground"
+                    title={m.connector_first_name ? getConnectorName(m) : undefined}
+                  >
+                    {getConnectorName(m)}
+                  </TableCell>
+                  <TableCell className="max-w-[180px] truncate" title={m.main_church || undefined}>{m.main_church || "—"}</TableCell> {/* capped width, ellipsis, full text on hover */}
                   <TableCell className="text-muted-foreground">
                     {formatDate(m.added_at)}
                   </TableCell>

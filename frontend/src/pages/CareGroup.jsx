@@ -92,6 +92,10 @@ const formatDate = (dateStr) => {
   });
 };
 
+// builds the "First Last" label for the assigned mentor, or a dash if none
+const getMentorName = (m) =>
+  m.mentor_first_name ? `${m.mentor_first_name} ${m.mentor_last_name}` : "—";
+
 const getMenteeStatusLabel = (m) => {
   if (m.member_status === "mentor" && m.mentor_id) return "Mentee/Mentor";
   return m.member_status;
@@ -417,19 +421,33 @@ export default function CareGroup() {
               members.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="pl-4">
-                    <div className="flex items-center gap-3">
-                      <MemberAvatar
-                        url={m.photo_url}
-                        firstName={m.first_name}
-                        lastName={m.last_name}
-                        previewable
-                      />
-                      <span>
+                    {/* caps the Name column width */}
+                    <div className="flex max-w-[260px] items-center gap-3">
+                      {/* keeps the avatar from being squeezed when the name is long */}
+                      <div className="shrink-0">
+                        <MemberAvatar
+                          url={m.photo_url}
+                          firstName={m.first_name}
+                          lastName={m.last_name}
+                          previewable
+                        />
+                      </div>
+                      {/* ellipsis on overflow, full name on hover */}
+                      <span
+                        className="min-w-0 truncate"
+                        title={`${m.first_name} ${m.last_name}`}
+                      >
                         {m.first_name} {m.last_name}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{m.phone_num || "—"}</TableCell>
+                  {/* capped width, ellipsis on overflow, full number on hover */}
+                  <TableCell
+                    className="max-w-[140px] truncate"
+                    title={m.phone_num || undefined}
+                  >
+                    {m.phone_num || "—"}
+                  </TableCell>
                   <TableCell className="capitalize">{m.gender}</TableCell>
 
                   {isMenteesTab && (
@@ -502,14 +520,22 @@ export default function CareGroup() {
                   )}
 
                   {isMenteesTab && (
-                    <TableCell className="text-muted-foreground">
-                      {m.mentor_first_name
-                        ? `${m.mentor_first_name} ${m.mentor_last_name}`
-                        : "—"}
+                    // capped width, ellipsis on overflow, full name on hover
+                    <TableCell
+                      className="max-w-[200px] truncate text-muted-foreground"
+                      title={m.mentor_first_name ? getMentorName(m) : undefined}
+                    >
+                      {getMentorName(m)}
                     </TableCell>
                   )}
 
-                  <TableCell>{m.main_church || "—"}</TableCell>
+                  {/* capped width, ellipsis on overflow, full text on hover */}
+                  <TableCell
+                    className="max-w-[180px] truncate"
+                    title={m.main_church || undefined}
+                  >
+                    {m.main_church || "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(m.updated_at)}
                   </TableCell>

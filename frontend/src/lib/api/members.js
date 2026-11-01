@@ -29,9 +29,8 @@ export async function fetchMembers({ search, role, gender, connectionStatus, has
   return res.json(); // { members, total }
 }
 
-// exact first+last name lookup for the add-member duplicate warning
+// first+last name lookup for the add-member duplicate warning
 export async function fetchDuplicateMembers(firstName, lastName, { excludeId, signal } = {}) {
- 
   const params = new URLSearchParams({ first_name: firstName || "", last_name: lastName || "" });
   if (excludeId) params.set("exclude_id", excludeId); // edit modal: skip the member being edited
   const res = await fetch(`${API_URL}/members/duplicates?${params.toString()}`, {
@@ -71,8 +70,6 @@ export async function createMember(data) {
   }
   return res.json(); // { member }
 }
-
-
 
 export async function updateMember(id, data) {
   const res = await fetch(`${API_URL}/members/${id}`, {

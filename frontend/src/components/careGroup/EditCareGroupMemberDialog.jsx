@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog.jsx";
 import { scrollToFirstError } from "@/lib/scrollToFirstError.js";
 import { PhotoPicker } from "@/components/PhotoPicker.jsx";
+import { PhoneInput } from "@/components/PhoneInput.jsx"; // fixed 09 prefix, digits only
 
 const STATUS_LABELS = {
   mentor: "Mentor",
@@ -38,12 +39,13 @@ const STATUS_LABELS = {
   mentee: "Mentee",
 };
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
+const FORM_FIELDS = ["first_name", "last_name", "address", "phone_num", "alt_phone", "main_church", "ministry", "facebook", "instagram"]; // server field errors that map to an input
 
 // allowed hosts per platform; subdomains (m., web., www.) are matched in toSocialUrl
 const FACEBOOK_HOSTS = ["facebook.com", "fb.com", "fb.me"];
 const INSTAGRAM_HOSTS = ["instagram.com", "instagr.am"];
 
-// turns a pasted link into a safe URL, or null unless it is http(s), on an allowed host, and has a path (not just the homepage)
+// turns a pasted link into a safe URL, or null unless it is http(s), on an allowed host, and has a path
 const toSocialUrl = (raw, hosts) => {
   const value = (raw || "").trim();
   if (!value || /\s/.test(value)) return null;
@@ -62,7 +64,7 @@ const toSocialUrl = (raw, hosts) => {
   }
 };
 
-// bordered icon button that sits inside an input: real link when valid, dimmed and unclickable when not
+// icon button inside an input: real link when valid, dimmed and unclickable when not
 const ProfileLinkButton = ({ url, label }) => {
   const base = "absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md";
   return url ? (
@@ -101,7 +103,7 @@ function toFormValues(member) {
 
 export function EditCareGroupMemberDialog({ member, open, onOpenChange, onSaved, allowMentorAssignment = false }) {
   const { showError } = useErrorModal();
-const { runWithLoading } = useLoadingModal();
+  const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
 
   const [selectedMentorId, setSelectedMentorId] = useState("");
@@ -116,16 +118,16 @@ const { runWithLoading } = useLoadingModal();
     defaultValues: toFormValues(member),
   });
 
-    const [photoFile, setPhotoFile] = useState(null); // newly cropped photo, uploaded on save
+  const [photoFile, setPhotoFile] = useState(null); // newly cropped photo, uploaded on save
   const [removePhoto, setRemovePhoto] = useState(false); // existing photo marked for deletion on save
   const [saving, setSaving] = useState(false);
-  const [pendingValues, setPendingValues] = useState(null);   // form values held while the demote warning is up
+  const [pendingValues, setPendingValues] = useState(null); // form values held while the demote warning is up
   const [showDemoteWarning, setShowDemoteWarning] = useState(false);
   const [duplicateMatches, setDuplicateMatches] = useState([]); // partial matches warn; an exact match locks Save until confirmed
   const [checkingDuplicates, setCheckingDuplicates] = useState(false); // true from keystroke until the lookup settles
   const [notDuplicate, setNotDuplicate] = useState(false); // user confirmed the match is a different person
   const [checkFailed, setCheckFailed] = useState(false); // lookup errored: unknown is NOT "no duplicates", so Save stays locked
-  const [recheckKey, setRecheckKey] = useState(0); // bump to re-run the duplicate lookup (Retry button, server 409)
+  const [recheckKey, setRecheckKey] = useState(0); // bump to re-run the duplicate lookup
 
   useEffect(() => {
     if (!open) return;
@@ -133,21 +135,21 @@ const { runWithLoading } = useLoadingModal();
     setPhotoFile(null); // fresh photo state for each member opened
     setRemovePhoto(false);
     setSelectedMentorId(member?.mentor_id ? String(member.mentor_id) : "");
-    setNotDuplicate(false); 
+    setNotDuplicate(false);
   }, [member, open, reset]);
 
-  // gender drives the mentor list — refetch on any live change, not just the member's saved gender
+  // gender drives the mentor list, refetched on any live change
   const genderValue = watch("gender");
-  // clickable profile links, null while the field isn't a recognizable link
   const facebookUrl = toSocialUrl(watch("facebook"), FACEBOOK_HOSTS);
   const instagramUrl = toSocialUrl(watch("instagram"), INSTAGRAM_HOSTS);
+  const phoneValue = watch("phone_num");
+  const altPhoneValue = watch("alt_phone");
 
   const selectedMentorLabel = useMemo(() => {
     if (!selectedMentorId) return "None";
     const found = mentorOptions.find((m) => String(m.id) === selectedMentorId);
     if (found) return `${found.first_name} ${found.last_name}`;
-    // options haven't loaded/matched yet — fall back to the name already on the row
-    // (mentor_first_name/mentor_last_name come from the LEFT JOIN in memberRepository)
+    // options not loaded yet: fall back to the name already on the row
     if (member?.mentor_id && String(member.mentor_id) === selectedMentorId) {
       return member.mentor_first_name ? `${member.mentor_first_name} ${member.mentor_last_name}` : undefined;
     }
@@ -162,7 +164,7 @@ const { runWithLoading } = useLoadingModal();
     let cancelled = false;
     setMentorsLoading(true);
     fetchMembers({ role: ["mentor"], gender: genderValue, limit: 100 })
-      // exclude the member being edited — on the Mentors tab the person being edited IS a mentor
+      // exclude the member being edited, on the Mentors tab they ARE a mentor
       .then(({ members }) => { if (!cancelled) setMentorOptions(members.filter((m) => m.id !== member?.id)); })
       .catch(() => { if (!cancelled) setMentorOptions([]); })
       .finally(() => { if (!cancelled) setMentorsLoading(false); });
@@ -172,7 +174,7 @@ const { runWithLoading } = useLoadingModal();
   // debounced name check, only when the name differs from the saved one; excludes this member's own row
   const firstNameValue = watch("first_name");
   const lastNameValue = watch("last_name");
-    useEffect(() => {
+  useEffect(() => {
     setNotDuplicate(false); // any name change invalidates the earlier "different person" confirmation
     setCheckFailed(false); // new attempt clears the previous failure
     if (!open || !member) { setDuplicateMatches([]); setCheckingDuplicates(false); return; }
@@ -210,8 +212,7 @@ const { runWithLoading } = useLoadingModal();
 
     setSaving(true);
 
-    // tracks which step actually failed so the error message reflects real DB state,
-    // not just "something went wrong" — profile/status can succeed while mentor assignment fails
+    // tracks which step failed so the error message reflects real DB state
     let step = "profile";
     let photoError = null; // shown after the loading modal closes
     try {
@@ -226,7 +227,7 @@ const { runWithLoading } = useLoadingModal();
           photoError = photoErr;
         }
 
-        // separate endpoints by design — PUT /:id ignores member_status and mentor_id server-side
+        // separate endpoints by design, PUT /:id ignores member_status and mentor_id
         if (statusChanged) {
           step = "status";
           await setMemberStatus(member.id, member_status, { cascadeUnassignMentees });
@@ -245,7 +246,7 @@ const { runWithLoading } = useLoadingModal();
         showError(`${photoError.message}. Your other changes were saved.`, "Photo Not Updated");
       }
     } catch (err) {
-      if (err.field) {
+      if (FORM_FIELDS.includes(err.field)) { // only fields that have an input; others fall through to showError
         setError(err.field, { type: "server", message: err.message });
         scrollToFirstError();
       } else if (step === "profile") {
@@ -256,20 +257,20 @@ const { runWithLoading } = useLoadingModal();
           `Profile details were saved, but the status change failed: ${err.message}`,
           "Partial Update"
         );
-        onSaved(); // profile fields did save — refresh the list to reflect that
+        onSaved(); // profile fields did save, refresh the list
       } else {
         showError(
           `Profile and status were saved, but the mentor change failed: ${err.message}`,
           "Partial Update"
         );
-        onSaved(); // profile + status did save — refresh the list to reflect that
+        onSaved(); // profile + status did save, refresh the list
       }
     } finally {
       setSaving(false);
     }
   };
 
-  // intercepts the normal submit to check for the mentor-demotion case before hitting the API
+  // intercepts submit to check for the mentor-demotion case before hitting the API
   const handleFormSubmit = async (values) => {
     const menteeCount = Number(member?.mentee_count) || 0;
     const isDemotingFromMentor =
@@ -301,7 +302,6 @@ const { runWithLoading } = useLoadingModal();
         <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[820px]">
           <DialogHeader className="border-b border-border px-5 py-5">
             <div className="flex items-start gap-4">
-              {/* icon badge: primary-tinted circle, same icon and tint as the Edit button in the table */}
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <Pencil size={18} className="text-primary" />
               </div>
@@ -317,7 +317,6 @@ const { runWithLoading } = useLoadingModal();
           <form onSubmit={handleSubmit(handleFormSubmit, scrollToFirstError)} className="flex min-h-0 flex-1 flex-col" noValidate>
             {/* scrollable body: 1 column on mobile, 3 columns on sm+ */}
             <div className="grid flex-1 grid-cols-1 content-start gap-4 overflow-y-auto px-7 py-5 sm:grid-cols-3">
-              {/* warning only: editing an existing record, so no lock and no override checkbox */}
               {checkFailed && (
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive sm:col-span-3">
                   <span>Couldn't check for duplicate names.</span>
@@ -360,7 +359,7 @@ const { runWithLoading } = useLoadingModal();
                 </div>
               )}
 
-              {/* photo picker: current photo comes from the signed photo_url in the list response */}
+              {/* photo picker: current photo comes from the signed photo_url */}
               <div className="sm:col-span-3">
                 <PhotoPicker
                   currentUrl={member?.photo_url}
@@ -379,18 +378,18 @@ const { runWithLoading } = useLoadingModal();
               </div>
               <div className="space-y-2">
                 <Label>First name <span className="text-destructive">*</span></Label>
-                <Input {...register("first_name")} />
+                <Input maxLength={50} {...register("first_name")} />
                 {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Last name <span className="text-destructive">*</span></Label>
-                <Input {...register("last_name")} />
+                <Input maxLength={50} {...register("last_name")} />
                 {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Gender <span className="text-destructive">*</span></Label>
                 <Select value={watch("gender")} onValueChange={(v) => setValue("gender", v, { shouldValidate: true })}>
-                  <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select gender">{GENDER_LABELS_FORM[watch("gender")]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -402,7 +401,6 @@ const { runWithLoading } = useLoadingModal();
               </div>
               <div className="space-y-2">
                 <Label>Birth date</Label>
-                {/* same picker as Connect modals */}
                 <Popover open={birthOpen} onOpenChange={setBirthOpen}>
                   <PopoverTrigger
                     render={
@@ -439,7 +437,7 @@ const { runWithLoading } = useLoadingModal();
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Address</Label>
-                <Input {...register("address")} />
+                <Input maxLength={255} {...register("address")} />
               </div>
 
               {/* section: Contact */}
@@ -448,28 +446,37 @@ const { runWithLoading } = useLoadingModal();
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input placeholder="09XX XXX XXXX" {...register("phone_num")} />
+                {/* shouldValidate only once an error is showing, so it doesn't nag mid-typing */}
+                <PhoneInput
+                  value={phoneValue}
+                  onChange={(v) => setValue("phone_num", v, { shouldDirty: true, shouldValidate: !!errors.phone_num })}
+                  invalid={!!errors.phone_num}
+                />
                 {errors.phone_num && <p className="text-sm text-destructive">{errors.phone_num.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Alt phone</Label>
-                <Input {...register("alt_phone")} />
+                {/* locked until a phone exists; stays editable if it already has a value so it can be cleared */}
+                <PhoneInput
+                  value={altPhoneValue}
+                  onChange={(v) => setValue("alt_phone", v, { shouldDirty: true, shouldValidate: !!errors.alt_phone })}
+                  disabled={!phoneValue && !altPhoneValue}
+                  invalid={!!errors.alt_phone}
+                />
                 {errors.alt_phone && <p className="text-sm text-destructive">{errors.alt_phone.message}</p>}
               </div>
               {/* sm:col-start-1 starts a new row, leaving the 3rd cell of the phone row empty */}
               <div className="space-y-2 sm:col-start-1">
                 <Label>Facebook</Label>
                 <div className="relative">
-                  <Input className="pr-10" placeholder="Paste profile link" {...register("facebook")} />
-                  {/* open-in-new-tab button, clickable only for a valid Facebook link */}
+                  <Input className="pr-10" maxLength={255} placeholder="Paste profile link" {...register("facebook")} />
                   <ProfileLinkButton url={facebookUrl} label="Facebook" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Instagram</Label>
                 <div className="relative">
-                  <Input className="pr-10" placeholder="Paste profile link" {...register("instagram")} />
-                  {/* open-in-new-tab button, clickable only for a valid Instagram link */}
+                  <Input className="pr-10" maxLength={255} placeholder="Paste profile link" {...register("instagram")} />
                   <ProfileLinkButton url={instagramUrl} label="Instagram" />
                 </div>
               </div>
@@ -479,17 +486,18 @@ const { runWithLoading } = useLoadingModal();
                 Church &amp; care group
               </div>
               <div className="space-y-2">
-                <Label>Main church</Label>
-                <ChurchInput value={watch("main_church")} onChange={(v) => setValue("main_church", v, { shouldDirty: true })} />
+                <Label>Main church <span className="text-destructive">*</span></Label>
+                <ChurchInput value={watch("main_church")} onChange={(v) => setValue("main_church", v, { shouldDirty: true, shouldValidate: true })} />
+                {errors.main_church && <p className="text-sm text-destructive">{errors.main_church.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Ministry</Label>
-                <Input {...register("ministry")} />
+                <Input maxLength={100} {...register("ministry")} />
               </div>
               <div className="space-y-2">
                 <Label>Member Status <span className="text-destructive">*</span></Label>
                 <Select value={watch("member_status")} onValueChange={(v) => setValue("member_status", v, { shouldValidate: true })}>
-                  <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select status">{STATUS_LABELS[watch("member_status")]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -504,7 +512,7 @@ const { runWithLoading } = useLoadingModal();
                 <div className="space-y-2">
                   <Label>Mentor</Label>
                   <Select value={selectedMentorId} onValueChange={setSelectedMentorId} disabled={!genderValue}>
-                    <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder={genderValue ? "Select a mentor" : "Select a gender first"}>
                         {selectedMentorLabel}
                       </SelectValue>
@@ -536,11 +544,9 @@ const { runWithLoading } = useLoadingModal();
 
       {/* demote warning: same Dialog shell as the remove confirmation, destructive confirm */}
       <Dialog open={showDemoteWarning} onOpenChange={(o) => !o && handleCancelDemote()}>
-        {/* max-w-lg gives long warnings room to breathe */}
         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b border-border py-5 pl-5 pr-12"> {/* pr-12 keeps text clear of the built-in X */}
+          <DialogHeader className="border-b border-border py-5 pl-5 pr-12">
             <div className="flex items-start gap-4">
-              {/* icon badge: destructive-tinted circle */}
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
                 <AlertTriangle size={18} className="text-destructive" />
               </div>
@@ -553,7 +559,6 @@ const { runWithLoading } = useLoadingModal();
             </div>
           </DialogHeader>
 
-          {/* body: consequence in its own full-width panel */}
           <div className="px-5 py-4 text-sm text-muted-foreground">
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
               <p className="font-medium text-destructive">

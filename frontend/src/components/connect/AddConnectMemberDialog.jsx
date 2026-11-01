@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog.jsx";
 import { scrollToFirstError } from "@/lib/scrollToFirstError.js"; // scroll to first field error on invalid submit
 import { PhotoPicker } from "@/components/PhotoPicker.jsx"; // optional photo
+import { PhoneInput } from "@/components/PhoneInput.jsx"; // fixed 09 prefix, digits only
 
 const emptyDefaults = {
   first_name: "",
@@ -62,12 +63,13 @@ const emptyDefaults = {
   added_at: "", // optional backdate; empty = today (PH) on the server
 };
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
+const FORM_FIELDS = ["first_name", "last_name", "address", "phone_num", "alt_phone", "main_church", "ministry", "facebook", "instagram"]; // server field errors that map to an input
 
 // allowed hosts per platform; subdomains (m., web., www.) are matched in toSocialUrl
 const FACEBOOK_HOSTS = ["facebook.com", "fb.com", "fb.me"];
 const INSTAGRAM_HOSTS = ["instagram.com", "instagr.am"];
 
-// turns a pasted link into a safe URL, or null unless it is http(s), on an allowed host, and has a path (not just the homepage)
+// turns a pasted link into a safe URL, or null unless it is http(s), on an allowed host, and has a path
 const toSocialUrl = (raw, hosts) => {
   const value = (raw || "").trim();
   if (!value || /\s/.test(value)) return null;
@@ -86,7 +88,7 @@ const toSocialUrl = (raw, hosts) => {
   }
 };
 
-// bordered icon button that sits inside an input: real link when valid, dimmed and unclickable when not
+// icon button inside an input: real link when valid, dimmed and unclickable when not
 const ProfileLinkButton = ({ url, label }) => {
   const base = "absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md";
   return url ? (
@@ -108,11 +110,9 @@ const ProfileLinkButton = ({ url, label }) => {
 
 export function AddConnectMemberDialog({ open, onOpenChange, onSaved }) {
   const { showError } = useErrorModal();
-const { runWithLoading } = useLoadingModal();
+  const { runWithLoading } = useLoadingModal();
   const [birthOpen, setBirthOpen] = useState(false); // birth date popover
   const [addedOpen, setAddedOpen] = useState(false); // date added popover
-  // today in PH time as YYYY-MM-DD, used as the max for the date input
-  const phToday = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const [photoFile, setPhotoFile] = useState(null);
   const [connectorId, setConnectorId] = useState("");
   const [mentorOptions, setMentorOptions] = useState([]);
@@ -122,12 +122,13 @@ const { runWithLoading } = useLoadingModal();
   const [restoringId, setRestoringId] = useState(null);
   const [notDuplicate, setNotDuplicate] = useState(false); // admin confirmed the match is a different person
   const [checkFailed, setCheckFailed] = useState(false); // lookup errored: unknown is NOT "no duplicates", so Save stays locked
-  const [recheckKey, setRecheckKey] = useState(0); // bump to re-run the duplicate lookup (Retry button, server 409)
+  const [recheckKey, setRecheckKey] = useState(0); // bump to re-run the duplicate lookup
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    setError, // server field-error handling in onSubmit's catch
     watch,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -144,12 +145,13 @@ const { runWithLoading } = useLoadingModal();
     }
   }, [open, reset]);
 
-  // gender is required at Connect intake (see addConnectMemberSchema), so this
-  // only waits on the modal being open — same fetch pattern as AddCareGroupMemberDialog's mentor field
+  // gender is required at Connect intake, so the mentor fetch only waits on the modal being open
   const genderValue = watch("gender");
-  // clickable profile links, null while the field isn't a recognizable link
   const facebookUrl = toSocialUrl(watch("facebook"), FACEBOOK_HOSTS);
   const instagramUrl = toSocialUrl(watch("instagram"), INSTAGRAM_HOSTS);
+  const phoneValue = watch("phone_num");
+  const altPhoneValue = watch("alt_phone");
+
   useEffect(() => {
     if (!open || !genderValue) {
       setMentorOptions([]);
@@ -172,12 +174,9 @@ const { runWithLoading } = useLoadingModal();
     };
   }, [open, genderValue]);
 
-  // debounced name-collision check across ALL members (mentors, mentees, other
-  // Connect entries, removed) — fetchMembers({search}) has no implicit role
-  // filter, same pattern as AddCareGroupMemberDialog
+  // debounced name-collision check across ALL members; checkingDuplicates locks submit for the whole window
   const firstNameValue = watch("first_name");
   const lastNameValue = watch("last_name");
-  // debounced duplicate check; checkingDuplicates locks the submit button for the whole debounce + fetch window
   useEffect(() => {
     setNotDuplicate(false); // any name change invalidates the earlier "different person" confirmation
     setCheckFailed(false); // new attempt clears the previous failure
@@ -227,8 +226,8 @@ const { runWithLoading } = useLoadingModal();
     setRestoringId(match.id);
     try {
       await runWithLoading("Restoring member...", () =>
-  setMemberStatus(match.id, "mentee"),
-);
+        setMemberStatus(match.id, "mentee"),
+      );
       toast.success(
         `${match.first_name} restored — you can edit their details now`,
       );
@@ -241,15 +240,13 @@ const { runWithLoading } = useLoadingModal();
     }
   };
 
-  // for someone who was only ever a Connect first-timer (never a full member) and
-  // dropped out of follow-up — unassignConnector sets connection_status back to
-  // 'pending' and clears assigned_to, which is exactly "reopen as a fresh lead"
+  // unassignConnector resets connection_status to 'pending', which reopens them as a fresh lead
   const handleResumeFollowUp = async (match) => {
     setRestoringId(match.id);
     try {
       await runWithLoading("Updating follow-up...", () =>
-  unassignConnector(match.id),
-);
+        unassignConnector(match.id),
+      );
       toast.success(`${match.first_name} moved back to pending follow-up`);
       onSaved();
       onOpenChange(false);
@@ -264,20 +261,17 @@ const { runWithLoading } = useLoadingModal();
     let photoError = null; // shown after the loading modal closes
     try {
       await runWithLoading("Adding first-timer...", async () => {
-        // first-timers start with no member_status at all (NULL) — they aren't a
-        // "mentee" in any real sense until joinCareGroup() sets that. Only
-        // connection_status is meaningful at intake.
+        // first-timers start with member_status NULL, only connection_status matters at intake
         const { member } = await createMember({
           ...data,
           connection_status: "pending",
           confirm_different_person: notDuplicate, // server re-checks unless confirmed
         });
-        // assignConnector() also flips connection_status to 'assigned' server-side,
-        // overwriting the 'pending' just set above, which is the correct end state
+        // assignConnector() flips connection_status to 'assigned' server-side, the correct end state
         if (connectorId) {
           await assignConnector(member.id, connectorId);
         }
-        // photo is its own request; a failure here must not hide that the member was created
+        // photo is its own request; a failure must not hide that the member was created
         if (photoFile) {
           try {
             await uploadMemberPhoto(member.id, photoFile);
@@ -293,7 +287,8 @@ const { runWithLoading } = useLoadingModal();
         showError(`${photoError.message}. The member was added; you can retry from Edit.`, "Photo Not Uploaded");
       }
     } catch (err) {
-      showError(err.message, "Could Not Add First-Timer");
+      if (FORM_FIELDS.includes(err.field)) setError(err.field, { message: err.message }); // show server field errors under the input
+      else showError(err.message, "Could Not Add First-Timer");
       if (err.code === "DUPLICATE_NAME") setRecheckKey((k) => k + 1); // surface the warning panel + checkbox
     }
   };
@@ -302,9 +297,8 @@ const { runWithLoading } = useLoadingModal();
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* p-0 + flex-col: header and footer are pinned bars, only the form body scrolls */}
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[820px]">
-                <DialogHeader className="border-b border-border px-5 py-5">
+        <DialogHeader className="border-b border-border px-5 py-5">
           <div className="flex items-start gap-4">
-            {/* icon badge: primary-tinted circle, matches the Add first-timer button */}
             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
               <UserPlus size={18} className="text-primary" />
             </div>
@@ -323,7 +317,6 @@ const { runWithLoading } = useLoadingModal();
         >
           {/* scrollable body: 1 column on mobile, 3 columns on sm+ */}
           <div className="grid flex-1 grid-cols-1 content-start gap-4 overflow-y-auto px-7 py-5 sm:grid-cols-3">
-            {/* lookup failed: Save stays locked until a retry succeeds */}
             {checkFailed && (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive sm:col-span-3">
                 <span>Couldn't check for duplicate names.</span>
@@ -424,7 +417,7 @@ const { runWithLoading } = useLoadingModal();
               <Label>
                 First name <span className="text-destructive">*</span>
               </Label>
-              <Input {...register("first_name")} />
+              <Input maxLength={50} {...register("first_name")} />
               {errors.first_name && (
                 <p className="text-sm text-destructive">
                   {errors.first_name.message}
@@ -435,7 +428,7 @@ const { runWithLoading } = useLoadingModal();
               <Label>
                 Last name <span className="text-destructive">*</span>
               </Label>
-              <Input {...register("last_name")} />
+              <Input maxLength={50} {...register("last_name")} />
               {errors.last_name && (
                 <p className="text-sm text-destructive">
                   {errors.last_name.message}
@@ -452,7 +445,7 @@ const { runWithLoading } = useLoadingModal();
                   setValue("gender", v, { shouldValidate: true })
                 }
               >
-                <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select gender">
                     {GENDER_LABELS_FORM[watch("gender")]}
                   </SelectValue>
@@ -470,7 +463,6 @@ const { runWithLoading } = useLoadingModal();
             </div>
             <div className="space-y-2">
               <Label>Birth date</Label>
-              {/* same picker as Profile's birthdate */}
               <Popover open={birthOpen} onOpenChange={setBirthOpen}>
                 <PopoverTrigger
                   render={
@@ -507,7 +499,7 @@ const { runWithLoading } = useLoadingModal();
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Address</Label>
-              <Input {...register("address")} />
+              <Input maxLength={255} {...register("address")} />
             </div>
 
             {/* section: Contact */}
@@ -516,36 +508,37 @@ const { runWithLoading } = useLoadingModal();
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input placeholder="09XX XXX XXXX" {...register("phone_num")} />
-              {errors.phone_num && (
-                <p className="text-sm text-destructive">
-                  {errors.phone_num.message}
-                </p>
-              )}
+              {/* shouldValidate only once an error is showing, so it doesn't nag mid-typing */}
+              <PhoneInput
+                value={phoneValue}
+                onChange={(v) => setValue("phone_num", v, { shouldDirty: true, shouldValidate: !!errors.phone_num })}
+                invalid={!!errors.phone_num}
+              />
+              {errors.phone_num && <p className="text-sm text-destructive">{errors.phone_num.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Alt phone</Label>
-              <Input {...register("alt_phone")} />
-              {errors.alt_phone && (
-                <p className="text-sm text-destructive">
-                  {errors.alt_phone.message}
-                </p>
-              )}
+              {/* locked until a phone exists; stays editable if it already has a value so it can be cleared */}
+              <PhoneInput
+                value={altPhoneValue}
+                onChange={(v) => setValue("alt_phone", v, { shouldDirty: true, shouldValidate: !!errors.alt_phone })}
+                disabled={!phoneValue && !altPhoneValue}
+                invalid={!!errors.alt_phone}
+              />
+              {errors.alt_phone && <p className="text-sm text-destructive">{errors.alt_phone.message}</p>}
             </div>
             {/* sm:col-start-1 starts a new row, leaving the 3rd cell of the phone row empty */}
             <div className="space-y-2 sm:col-start-1">
               <Label>Facebook</Label>
               <div className="relative">
-                <Input className="pr-10" placeholder="Paste profile link" {...register("facebook")} />
-                {/* open-in-new-tab button, clickable only for a valid Facebook link */}
+                <Input className="pr-10" maxLength={255} placeholder="Paste profile link" {...register("facebook")} />
                 <ProfileLinkButton url={facebookUrl} label="Facebook" />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Instagram</Label>
               <div className="relative">
-                <Input className="pr-10" placeholder="Paste profile link" {...register("instagram")} />
-                {/* open-in-new-tab button, clickable only for a valid Instagram link */}
+                <Input className="pr-10" maxLength={255} placeholder="Paste profile link" {...register("instagram")} />
                 <ProfileLinkButton url={instagramUrl} label="Instagram" />
               </div>
             </div>
@@ -557,16 +550,15 @@ const { runWithLoading } = useLoadingModal();
             <div className="space-y-2">
               <Label>Main church <span className="text-destructive">*</span></Label>
               <ChurchInput value={watch("main_church")} onChange={(v) => setValue("main_church", v, { shouldDirty: true, shouldValidate: true })} />
-              {errors.main_church && <p className="text-sm text-destructive">{errors.main_church.message}</p>} {/* required error */}
+              {errors.main_church && <p className="text-sm text-destructive">{errors.main_church.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Ministry</Label>
-              <Input {...register("ministry")} />
+              <Input maxLength={100} {...register("ministry")} />
             </div>
             {/* optional backdate; empty = today (PH) on the server */}
             <div className="space-y-2">
               <Label>Date added </Label>
-              {/* same picker as Profile; can't pick a future date */}
               <Popover open={addedOpen} onOpenChange={setAddedOpen}>
                 <PopoverTrigger
                   render={
@@ -617,7 +609,7 @@ const { runWithLoading } = useLoadingModal();
                 onValueChange={setConnectorId}
                 disabled={!genderValue}
               >
-                <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
+                <SelectTrigger className="w-full">
                   <SelectValue
                     placeholder={
                       genderValue ? "Select a mentor" : "Select a gender first"

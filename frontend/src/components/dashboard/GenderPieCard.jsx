@@ -164,11 +164,11 @@ function Pie({ label, data, delay }) {
       </svg>
       <p className="mt-3 text-sm font-semibold">{label}</p>
       <p className="text-sm text-muted-foreground">
-        {male} male · {female} female
+         {female} Female · {male} Male 
       </p>
       {unspecified > 0 && (
         <p className="text-xs text-muted-foreground">
-          {unspecified} unspecified
+          {unspecified} Unspecified
         </p>
       )}
     </div>
@@ -182,13 +182,14 @@ export function GenderPieCard({ gender, loading, className = "" }) {
         <h2 className="text-base font-semibold">Gender breakdown</h2>
         <div className="flex gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded-sm bg-chart-male" />
-            Male
-          </span>
-          <span className="flex items-center gap-1.5">
             <span className="size-3 rounded-sm bg-chart-female" />
             Female
           </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-3 rounded-sm bg-chart-male" />
+            Male
+          </span>
+          
         </div>
       </div>
       {/* equal columns, group centered vertically so a tall neighbor card doesn't leave the pies floating */}

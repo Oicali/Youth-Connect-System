@@ -30,24 +30,38 @@ const withAltPhoneCheck = (schema) =>
 const withStatus = (schema) =>
   schema.extend({ member_status: z.enum(["mentor", "potential mentor", "mentee", "removed"]) });
 
-export const addMemberSchema = withAltPhoneCheck(withStatus(memberBaseSchema));
+// Shared member rules (Connect + Care Group): strict 09 mobile numbers, tighter limits, name characters.
+const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M}\s'’.-]*$/u;
+const NAME_MSG = "Letters, spaces, - ' . only";
+const collapseSpaces = (s) => s.replace(/\s+/g, " ");
+// empty or a full 09XXXXXXXXX; the empty case lives inside the regex so no union is needed
+const mobileField = z.string().trim().regex(/^(09\d{9})?$/, "Enter all 9 digits after 09").optional();
 
-// Same shape as add — edit modal only touches base fields. connection_status and
-// the connector (assigned_to) are managed separately: connector via ConnectorPicker
-// inside the modal (assignConnector/unassignConnector), connection_status via the
-// table's status actions (join care group / mark removed) — never via PUT /members/:id.
-export const editConnectMemberSchema = withAltPhoneCheck(memberBaseSchema);
+const connectBaseSchema = memberBaseSchema.extend({
+  first_name: z.string().trim().min(1, "First name is required").max(50, "Max 50 characters").regex(NAME_RE, NAME_MSG).transform(collapseSpaces),
+  last_name: z.string().trim().min(1, "Last name is required").max(50, "Max 50 characters").regex(NAME_RE, NAME_MSG).transform(collapseSpaces),
+  address: z.string().trim().max(255, "Max 255 characters").optional(),
+  phone_num: mobileField,
+  alt_phone: mobileField,
+  main_church: z.string().trim().min(1, "Main church is required").max(100, "Max 100 characters"),
+  ministry: z.string().trim().max(100, "Max 100 characters").optional(),
+  facebook: z.string().trim().max(255, "Max 255 characters").optional(),
+  instagram: z.string().trim().max(255, "Max 255 characters").optional(),
+});
+
+// alt phone needs a phone and must differ from it
+const withConnectPhoneRules = (schema) =>
+  schema
+    .refine((d) => !d.alt_phone || !!d.phone_num, { message: "Enter a phone number first", path: ["alt_phone"] })
+    .refine((d) => !d.alt_phone || d.alt_phone !== d.phone_num, { message: "Alternate phone must be different from phone", path: ["alt_phone"] });
+
+export const addMemberSchema = withConnectPhoneRules(withStatus(connectBaseSchema)); 
 
 
-// Same shape as add for now. member_status stays in this schema because the Status field
-// lives in the same form — it's saved through PATCH /:id/status separately, not PUT /:id.
-export const editMemberSchema = withAltPhoneCheck(withStatus(memberBaseSchema));
+export const editConnectMemberSchema = withConnectPhoneRules(connectBaseSchema);
 
-// Connect first-timer intake — same fields as add/edit, no member_status select
-// (locked server-side to the default "mentee"; connection_status starts at "pending").
-// gender is required here (unlike memberBaseSchema) because JoinCareGroupModal filters
-// mentors by gender — a first-timer with no gender on file can't be moved into a care
-// group without the Connect team picking gender first, so we force it at intake instead.
+export const editMemberSchema = withConnectPhoneRules(withStatus(connectBaseSchema)); 
 
 
-export const addConnectMemberSchema = withAltPhoneCheck(memberBaseSchema);
+
+export const addConnectMemberSchema = withConnectPhoneRules(connectBaseSchema);

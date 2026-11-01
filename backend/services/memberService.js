@@ -3,19 +3,15 @@ const { randomUUID } = require("crypto");
 const memberRepository = require("../repositories/memberRepository");
 const r2Storage = require("../lib/r2Storage");
 const { processProfilePhoto } = require("../lib/imageProcessor");
+const { validateMemberInput } = require("../validators/memberValidator"); // input rules live in the validator
 
 const MEMBER_STATUSES = ["mentor", "potential mentor", "mentee", "removed"];
 
-async function checkPhoneConflicts(phone, altPhone, excludeMemberId = null) {
-  if (!phone && !altPhone) return; // nothing to compare when both are empty
-  const conflicts = await memberRepository.findPhoneConflict(phone || null, altPhone, excludeMemberId);
-  if (conflicts.length === 0) return;
-
-  const conflict = conflicts[0];
-  if (conflict.phone_num === phone || conflict.alt_phone === phone) {
-    throw { status: 409, message: "This phone number is already registered to another member", field: "phone_num" };
-  }
-  throw { status: 409, message: "This phone number is already registered to another member", field: "alt_phone" };
+// maps Postgres unique/CHECK violations to clean API errors; rethrows anything else
+function translateDbError(err) {
+  if (err.code === "23505") throw { status: 409, message: "A member with these details already exists" };
+  if (err.code === "23514") throw { status: 400, message: "One of the values was rejected as invalid" };
+  throw err;
 }
 
 // swaps a typed church for its existing spelling ("Sm molino" becomes "SM Molino"); a new church is kept, trimmed
@@ -84,24 +80,21 @@ async function findDuplicates(firstName, lastName, excludeId = null) {
 }
 
 async function createMember(fields) {
+  validateMemberInput(fields); // normalize + validate before any DB work
   validateAddedAt(fields.added_at);
-  await checkPhoneConflicts(fields.phone_num, fields.alt_phone, null);
   await checkNameConflict(fields, null); // exact-name duplicate guard
   await canonicalizeChurch(fields); // one spelling per church
 
   try {
     return await memberRepository.create(fields);
   } catch (err) {
-    if (err.code === "23505") {
-      throw { status: 409, message: "A member with these details already exists" };
-    }
-    throw err;
+    translateDbError(err); // clean message for unique/CHECK violations, rethrows the rest
   }
 }
 
 async function updateMember(memberId, fields) {
+  validateMemberInput(fields); // normalize + validate before any DB work
   validateAddedAt(fields.added_at); // reject future dates before touching the DB
-  await checkPhoneConflicts(fields.phone_num, fields.alt_phone, memberId);
 
   // only check when the name changed, otherwise pre-existing duplicates could never be edited
   const existing = await getMember(memberId); // 404 early if missing
@@ -118,10 +111,7 @@ async function updateMember(memberId, fields) {
     }
     return updated;
   } catch (err) {
-    if (err.code === "23505") {
-      throw { status: 409, message: "A member with these details already exists" };
-    }
-    throw err;
+    translateDbError(err); // clean message for unique/CHECK violations, rethrows the rest
   }
 }
 
@@ -135,9 +125,7 @@ async function setMemberStatus(memberId, status, { cascadeUnassignMentees = fals
 
   const updated = await memberRepository.setMemberStatus(memberId, status);
 
-  // opt-in only — the "remove member" flow calls this same function and intentionally
-  // does NOT cascade (see CareGroup.jsx remove-confirmation copy). Only the edit-modal
-  // demotion path passes cascadeUnassignMentees: true.
+  // opt-in only: the remove flow does NOT cascade, only the edit-modal demotion passes true
   if (cascadeUnassignMentees && wasMentor && status !== "mentor") {
     const affected = await memberRepository.unassignAllMenteesOfMentor(memberId);
     updated.unassigned_mentee_count = affected.length;
@@ -166,8 +154,7 @@ async function unassignMentor(menteeId) {
   return memberRepository.unassignMentor(menteeId);
 }
 
-// Connect -> CareGroup transition: same mentor validation as assignMentor,
-// but also closes out the Connect pipeline (connection_status/assigned_to -> NULL)
+// Connect -> CareGroup transition: same mentor validation, also closes the Connect pipeline
 async function joinCareGroup(menteeId, mentorId) {
   const mentee = await getMember(menteeId); // throws 404 if missing
 
@@ -183,8 +170,7 @@ async function joinCareGroup(menteeId, mentorId) {
   return memberRepository.joinCareGroup(menteeId, mentorId);
 }
 
-// connectors must be an active mentor — same rule as assignMentor (gender-match
-// is UI-only, enforced by the frontend's fetchMembers filter, not here)
+// connectors must be an active mentor; gender-match is UI-only
 async function assignConnector(memberId, connectorId) {
   await getMember(memberId); // throws 404 if missing
   const connector = await getMember(connectorId); // throws 404 if missing

@@ -109,7 +109,8 @@ async function findAll({ search, role, gender, connectionStatus, hasAssigned, ad
   // implicitly relies on; the other two are explicit opt-ins from specific pages
   const ORDER_CLAUSES = {
     no_mentor_first_updated: `(m.mentor_id IS NOT NULL) ASC, m.updated_at DESC, m.last_name ASC, m.first_name ASC`,
-    no_assigned_first_added: `(m.assigned_to IS NOT NULL) ASC, m.added_at ASC, m.last_name ASC, m.first_name ASC`,
+    // newest first, same-day rows grouped by church, m.id keeps pagination stable
+    newest_added_by_church: `m.added_at DESC, LOWER(TRIM(m.main_church)) ASC NULLS LAST, m.last_name ASC, m.first_name ASC, m.id ASC`,
   };
   const defaultOrderClause = `
        (m.mentor_id IS NOT NULL) ASC,

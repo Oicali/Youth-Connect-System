@@ -15,7 +15,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith("image/")),
 });
 
-// wraps multer so its errors return JSON instead of falling through to Express's default handler
+// wraps multer so its errors return JSON instead of Express's default handler
 function receivePhoto(req, res, next) {
   upload.single("photo")(req, res, (err) => {
     if (!err) return next();
@@ -26,9 +26,9 @@ function receivePhoto(req, res, next) {
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const { search, role, connectionStatus, gender, addedYear, addedMonth, page, limit } = req.query;
+    const { search, role, connectionStatus, hasAssigned, gender, addedYear, addedMonth, sort, page, limit } = req.query;
     const { rows, total } = await memberService.listMembers({
-      search, role, connectionStatus, gender,
+      search, role, connectionStatus, hasAssigned, gender, sort,
       addedYear: addedYear ? Number(addedYear) : undefined,
       addedMonth: addedMonth ? Number(addedMonth) : undefined,
       page: page ? Number(page) : 1,
@@ -43,7 +43,7 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-// also ABOVE "/:id", same reason as "/duplicates"
+// must stay ABOVE "/:id", same reason as "/duplicates"
 router.get("/churches", requireAuth, async (req, res) => {
   try {
     const churches = await memberService.listChurches();
