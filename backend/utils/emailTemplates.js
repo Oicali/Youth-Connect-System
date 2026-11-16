@@ -1,4 +1,4 @@
-// backend/utils/emailForgotPassword.js
+// backend/utils/emailTemplates.js
 
 const APP_NAME = "Youth Connect System"; // shown in the header and footer
 
@@ -120,4 +120,81 @@ function resetPasswordEmail({ firstName, link, expiresInMinutes }) {
   return { subject, text, html };
 }
 
-module.exports = { resetPasswordEmail };
+function welcomeEmail({ firstName, username, link, expiresInHours }) {
+  const name = escapeHtml(firstName || "there");
+  const safeUsername = escapeHtml(username);
+  const safeLink = escapeHtml(link);
+  const subject = `Welcome to ${APP_NAME}`;
+  const font = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+  const text = [
+    `Hi ${firstName || "there"},`,
+    ``,
+    `An account was created for you on ${APP_NAME}.`,
+    `Your username: ${username}`,
+    ``,
+    `Open this link to set your password (valid for ${expiresInHours} hours, one use only):`,
+    link,
+    ``,
+    `If you weren't expecting this, you can ignore this email.`,
+  ].join("\n");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:${COLORS.pageBg};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${COLORS.pageBg};padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:${COLORS.card};border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="background-color:${COLORS.primary};background-image:linear-gradient(180deg,${COLORS.primaryDeep},${COLORS.primary});padding:24px 32px;font-family:${font};font-size:20px;font-weight:700;color:${COLORS.primaryText};">
+              ${APP_NAME}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;font-family:${font};color:${COLORS.text};">
+              <h1 style="margin:0 0 16px;font-size:22px;line-height:28px;color:${COLORS.text};">Welcome aboard</h1>
+              <p style="margin:0 0 12px;font-size:15px;line-height:24px;">Hi ${name},</p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:24px;">An account was created for you. Your username is:</p>
+              <p style="margin:0 0 16px;padding:12px 16px;background-color:${COLORS.pageBg};border:1px solid ${COLORS.border};border-radius:8px;font-size:16px;font-weight:600;font-family:Consolas,Menlo,monospace;">${safeUsername}</p>
+              <p style="margin:0;font-size:15px;line-height:24px;">Click the button below to set your password.</p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+                <tr>
+                  <td style="background-color:${COLORS.primary};border-radius:8px;">
+                    <a href="${safeLink}" style="display:inline-block;padding:14px 28px;font-family:${font};font-size:15px;font-weight:600;color:${COLORS.primaryText};text-decoration:none;">
+                      Set my password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 20px;font-size:13px;line-height:20px;color:${COLORS.muted};">
+                This link expires in ${expiresInHours} hours and can only be used once.
+              </p>
+              <p style="margin:0 0 20px;font-size:13px;line-height:20px;color:${COLORS.muted};">
+                Button not working? Copy and paste this link into your browser:<br>
+                <a href="${safeLink}" style="color:${COLORS.link};text-decoration:underline;word-break:break-all;">${safeLink}</a>
+              </p>
+              <hr style="border:none;border-top:1px solid ${COLORS.border};margin:24px 0;">
+              <p style="margin:0;font-size:13px;line-height:20px;color:${COLORS.muted};">
+                If you weren't expecting this, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, text, html };
+}
+
+module.exports = { resetPasswordEmail, welcomeEmail };

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { UserPlus, Pencil, Eye, EyeOff } from "lucide-react";
+import { UserPlus, Pencil } from "lucide-react";
 
 import { addUserSchema, editUserSchema } from "@/lib/validations/user.js";
 import { createUser, updateUser } from "@/lib/api/users.js";
@@ -13,6 +13,7 @@ import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
+import { PhoneInput } from "@/components/PhoneInput.jsx"; // fixed 09 prefix, digits only
 
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -22,32 +23,15 @@ import {
 } from "@/components/ui/dialog.jsx";
 
 const emptyDefaults = {
-  username: "", password: "", confirmPassword: "",
   first_name: "", last_name: "", middle_name: "", suffix: "",
-  email: "", phone: "", alt_phone: "", gender: "", role_id: "",
+  email: "", phone: "", alt_phone: "", gender: "", role_id: "2", // Volunteer is pre-selected
 };
 
 // explicit trigger labels — Radix SelectValue won't resolve text for values set via reset()/setValue()
 const ROLE_LABELS = { "1": "Admin", "2": "Volunteer" };
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
 
-// password input with its own show/hide toggle; register props pass straight through
-const PasswordInput = (props) => {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="relative">
-      <Input type={visible ? "text" : "password"} className="pr-10" {...props} />
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Hide password" : "Show password"}
-        className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-primary"
-      >
-        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
-      </button>
-    </div>
-  );
-};
+
 
 export function UserFormDialog({ user, open, onOpenChange, onSaved }) {
   const isEdit = !!user;
@@ -62,6 +46,9 @@ const { runWithLoading } = useLoadingModal();
     resolver: zodResolver(isEdit ? editUserSchema : addUserSchema),
     defaultValues: emptyDefaults,
   });
+
+  const phoneValue = watch("phone");
+  const altPhoneValue = watch("alt_phone");
 
   // Re-populate whenever the target user or open-state changes, so switching
   // between "add" and "edit" (or between two different users) always starts clean.
@@ -86,7 +73,7 @@ const { runWithLoading } = useLoadingModal();
   }, [user, open, isEdit, reset]);
 
   const onSubmit = async (data) => {
-    const { confirmPassword, ...payload } = data;
+    const payload = data;
     try {
       if (isEdit) {
         await runWithLoading("Saving user...", () =>
@@ -94,10 +81,16 @@ const { runWithLoading } = useLoadingModal();
         );
         toast.success("User updated");
       } else {
-        await runWithLoading("Creating user...", () =>
-          createUser({ ...payload, role_id: Number(payload.role_id) }),
-        );
-        toast.success("User created");
+        let result;
+        await runWithLoading("Creating user...", async () => {
+          result = await createUser({ ...payload, role_id: Number(payload.role_id) });
+        });
+        // account exists either way; warn if the welcome email didn't go out
+        if (result?.user?.emailSent === false) {
+          toast.warning("User created, but the welcome email failed to send. Check the email address.");
+        } else {
+          toast.success(`User created. Welcome email sent to ${payload.email}`);
+        }
       }
       onSaved();
       onOpenChange(false);
@@ -119,7 +112,8 @@ const { runWithLoading } = useLoadingModal();
             <div className="space-y-1.5 text-left">
               <DialogTitle>{isEdit ? `Edit User` : "Add New User"}</DialogTitle>
               <DialogDescription>
-                {isEdit ? "Update account details and role." : "Create an account for an admin or volunteer."}
+                {isEdit ? "Update account details and role." : "A welcome email with login details will be sent."}{" "}
+                <span className="text-destructive">*</span> required
               </DialogDescription>
             </div>
           </div>
@@ -132,28 +126,9 @@ const { runWithLoading } = useLoadingModal();
             <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground after:h-px after:flex-1 after:bg-border after:content-[''] sm:col-span-3">
               Account
             </div>
-            {/* username + passwords only exist when creating a user */}
-            {!isEdit && (
-              <>
-                <div className="space-y-2">
-                  <Label>Username</Label>
-                  <Input {...register("username")} />
-                  {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label>Password</Label>
-                  <PasswordInput {...register("password")} />
-                  {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label>Confirm password</Label>
-                  <PasswordInput {...register("confirmPassword")} />
-                  {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
-                </div>
-              </>
-            )}
+            {/* username + password are generated and emailed, so only the role is chosen here */}
             <div className="space-y-2 sm:col-start-1">
-              <Label>Role</Label>
+              <Label>Role <span className="text-destructive">*</span></Label>
               <Select value={watch("role_id")} onValueChange={(v) => setValue("role_id", v, { shouldValidate: true })}>
                 <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                   <SelectValue placeholder="Select role">{ROLE_LABELS[watch("role_id")]}</SelectValue>
@@ -171,25 +146,25 @@ const { runWithLoading } = useLoadingModal();
               Personal
             </div>
             <div className="space-y-2">
-              <Label>First name</Label>
-              <Input {...register("first_name")} />
+              <Label>First name <span className="text-destructive">*</span></Label>
+              <Input maxLength={50} {...register("first_name")} />
               {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Last name</Label>
-              <Input {...register("last_name")} />
+              <Label>Last name <span className="text-destructive">*</span></Label>
+              <Input maxLength={50} {...register("last_name")} />
               {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Middle name</Label>
-              <Input {...register("middle_name")} />
+              <Input maxLength={50} {...register("middle_name")} />
             </div>
             <div className="space-y-2">
               <Label>Suffix</Label>
-              <Input {...register("suffix")} />
+              <Input maxLength={10} {...register("suffix")} />
             </div>
             <div className="space-y-2">
-              <Label>Gender</Label>
+              <Label>Gender <span className="text-destructive">*</span></Label>
               <Select value={watch("gender")} onValueChange={(v) => setValue("gender", v, { shouldValidate: true })}>
                 <SelectTrigger className="w-full"> {/* fill the grid cell like the inputs */}
                   <SelectValue placeholder="Select gender">{GENDER_LABELS_FORM[watch("gender")]}</SelectValue>
@@ -208,18 +183,29 @@ const { runWithLoading } = useLoadingModal();
               Contact
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" {...register("email")} />
+              <Label>Email <span className="text-destructive">*</span></Label>
+              <Input type="email" maxLength={255} {...register("email")} />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input placeholder="09XX XXX XXXX" {...register("phone")} />
+              <Label>Phone <span className="text-destructive">*</span></Label>
+              {/* shouldValidate only once an error is showing, so it doesn't nag mid-typing */}
+              <PhoneInput
+                value={phoneValue}
+                onChange={(v) => setValue("phone", v, { shouldDirty: true, shouldValidate: !!errors.phone })}
+                invalid={!!errors.phone}
+              />
               {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Alt phone</Label>
-              <Input {...register("alt_phone")} />
+              {/* locked until a phone exists; stays editable if it already has a value so it can be cleared */}
+              <PhoneInput
+                value={altPhoneValue}
+                onChange={(v) => setValue("alt_phone", v, { shouldDirty: true, shouldValidate: !!errors.alt_phone })}
+                disabled={!phoneValue && !altPhoneValue}
+                invalid={!!errors.alt_phone}
+              />
               {errors.alt_phone && <p className="text-sm text-destructive">{errors.alt_phone.message}</p>}
             </div>
           </div>

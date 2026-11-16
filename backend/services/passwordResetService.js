@@ -5,9 +5,10 @@ const userRepository = require("../repositories/userRepository");
 const passwordResetRepository = require("../repositories/passwordResetRepository");
 const sessionRepository = require("../repositories/sessionRepository");
 const { sendEmail } = require("../utils/mailer");
-const { resetPasswordEmail } = require("../utils/emailForgotPassword");
+const { resetPasswordEmail, welcomeEmail } = require("../utils/emailTemplates");
 
 const TOKEN_TTL_MINUTES = 30; // how long a reset link stays valid
+const ONBOARDING_TTL_MINUTES = 72 * 60; // welcome links last longer, people don't check email right away
 const SALT_ROUNDS = 10; // must match what you use when creating users
 
 // SHA-256 of the token, hex encoded (matches the character(64) column)
@@ -15,22 +16,36 @@ function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+// creates a fresh single-use token (invalidating older ones) and returns the link
+async function issueResetLink(userId, ttlMinutes) {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  await passwordResetRepository.deleteByUserId(userId); // only the newest link should work
+  await passwordResetRepository.create({
+    userId,
+    tokenHash: hashToken(rawToken),
+    ttlMinutes,
+  });
+  return `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
+}
+
+// emails a new user their username plus a link to set their first password
+async function sendWelcomeEmail({ userId, email, firstName, username }) {
+  const link = await issueResetLink(userId, ONBOARDING_TTL_MINUTES);
+  const { subject, text, html } = welcomeEmail({
+    firstName,
+    username,
+    link,
+    expiresInHours: ONBOARDING_TTL_MINUTES / 60,
+  });
+  await sendEmail({ to: email, subject, text, html });
+}
+
 // step 1: create a token and email the link (silent if the account doesn't qualify)
 async function requestPasswordReset(email) {
   const user = await userRepository.findByEmail(email);
   if (!user || user.status !== "active") return;
 
-  const rawToken = crypto.randomBytes(32).toString("hex");
-
-  // only the newest link should work
-  await passwordResetRepository.deleteByUserId(user.user_id);
-  await passwordResetRepository.create({
-    userId: user.user_id,
-    tokenHash: hashToken(rawToken),
-    ttlMinutes: TOKEN_TTL_MINUTES,
-  });
-
-  const link = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
+  const link = await issueResetLink(user.user_id, TOKEN_TTL_MINUTES);
 
   // build the branded email, with a plain-text fallback
   const { subject, text, html } = resetPasswordEmail({
@@ -66,4 +81,4 @@ async function resetPassword(token, newPassword) {
   await sessionRepository.deleteByUserId(userId);
 }
 
-module.exports = { requestPasswordReset, resetPassword };
+module.exports = { requestPasswordReset, resetPassword, sendWelcomeEmail };

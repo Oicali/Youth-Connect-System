@@ -64,3 +64,16 @@ export async function setUserStatus(id, status) {
   }
   return res.json();
 }
+
+// re-sends the welcome email to a user who hasn't set a password yet
+export async function resendInvite(id) {
+  const res = await fetch(`${API_URL}/users/${id}/resend-invite`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || "Failed to resend invite");
+  }
+  return res.json();
+}

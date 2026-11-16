@@ -1,9 +1,9 @@
 // frontend\src\pages\Users.jsx
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Pencil, Trash2, RotateCcw, Search as SearchIcon, Undo2, Archive } from "lucide-react";
+import { Pencil, Trash2, RotateCcw, Search as SearchIcon, Undo2, Archive, Mail } from "lucide-react";
 
-import { fetchUsers, setUserStatus } from "@/lib/api/users";
+import { fetchUsers, setUserStatus, resendInvite } from "@/lib/api/users";
 import { UserPlus } from "lucide-react";
 import { useLoadingModal } from "@/context/LoadingModalContext";
 import { useAuth } from "@/context/AuthContext";
@@ -143,6 +143,16 @@ export default function Users() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  // re-sends the welcome email; the server rejects it if the password is already set
+  const handleResendInvite = async (u) => {
+    try {
+      await runWithLoading("Sending invite...", () => resendInvite(u.user_id));
+      toast.success(`Invite sent to ${u.email}`);
+    } catch (err) {
+      showError(err.message, "Could Not Send Invite");
+    }
   };
 
   const handleConfirmStatusChange = async () => {
@@ -307,6 +317,22 @@ export default function Users() {
                     {/* row actions with tooltips, same as the other pages */}
                     <TableCell className="flex justify-end gap-1 pr-4">
                       <TooltipProvider>
+                        {/* only for users who haven't set a password yet */}
+                        {!u.password_set_at && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleResendInvite(u)}
+                                className="bg-muted hover:bg-muted/70"
+                              >
+                                <Mail size={16} className="text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Resend invite email</TooltipContent>
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             {/* span wrapper: a disabled button never fires hover, so the tooltip hangs off the span */}

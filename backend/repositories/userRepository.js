@@ -57,7 +57,7 @@ async function findPasswordById(userId) {
 
 async function updatePassword(userId, newHash) {
   await pool.query(
-    "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2",
+    "UPDATE users SET password = $1, password_set_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2",
     [newHash, userId]
   );
 }
@@ -91,7 +91,7 @@ async function findAll({ search, role, status, page = 1, limit = 10 } = {}) {
   const rowsResult = await pool.query(
     `SELECT u.user_id, u.username, u.email, u.first_name, u.last_name,
             u.middle_name, u.suffix, u.phone, u.alt_phone, u.gender,
-            u.status, u.created_at, u.updated_at, r.role_name, r.role_id
+            u.status, u.password_set_at, u.created_at, u.updated_at, r.role_name, r.role_id
      FROM users u
      JOIN roles r ON u.role_id = r.role_id
      ${whereClause}
@@ -167,6 +167,16 @@ async function findPhoneConflict(phone, altPhone, excludeUserId = null) {
   return result.rows;
 }
 
+// minimal lookup for resending an invite
+async function findForInvite(userId) {
+  const result = await pool.query(
+    `SELECT user_id, username, email, first_name, status, password_set_at
+     FROM users WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
 // finds a user by email, ignoring letter case (used by forgot-password)
 async function findByEmail(email) {
   const result = await pool.query(
@@ -190,4 +200,5 @@ module.exports = {
   setStatus,
   create,
   findPhoneConflict,
+  findForInvite,
 };
