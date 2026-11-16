@@ -683,15 +683,17 @@ export function AddCareGroupMemberDialog({ open, onOpenChange, onSaved }) {
                       : "None"}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                {/* capped height, visible scrollbar, no arrows */}
+                <SelectContent showScrollArrows={false} alignItemWithTrigger={false} className="max-h-60 [scrollbar-width:thin] [scrollbar-color:var(--muted-foreground)_transparent]">
+                  <SelectItem value="" className="rounded-none border-b border-border/60">None</SelectItem>
                   {mentorsLoading && (
                     <SelectItem value="__loading" disabled>
                       Loading...
                     </SelectItem>
                   )}
+                  {/* border-b = divider between mentors */}
                   {mentorOptions.map((mentorOpt) => (
-                    <SelectItem key={mentorOpt.id} value={String(mentorOpt.id)}>
+                    <SelectItem key={mentorOpt.id} value={String(mentorOpt.id)} className="rounded-none border-b border-border/60 last:border-b-0">
                       {mentorOpt.first_name} {mentorOpt.last_name}
                     </SelectItem>
                   ))}

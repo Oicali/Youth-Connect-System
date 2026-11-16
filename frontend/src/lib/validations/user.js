@@ -19,7 +19,6 @@ const userBaseSchema = z.object({
     .optional()
     .or(z.literal("")),
   gender: z.string().min(1, "Gender is required"),
-  birthdate: z.string().min(1, "Birthdate is required"),
 });
 
 // Every schema built on the base needs this same check — factored out so it's
@@ -41,14 +40,9 @@ export const editUserSchema = withAltPhoneCheck(
 );
 
 // Admin creating a new user — base fields + role + credentials.
+// username and password are generated server-side and emailed
 export const addUserSchema = withAltPhoneCheck(
   userBaseSchema.extend({
-    username: z.string().min(3, "Username must be at least 3 characters"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(1, "Please confirm the password"),
     role_id: z.string().min(1, "Required"),
   }),
-).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+);

@@ -84,6 +84,18 @@ router.patch("/:id/status", requireAuth, requireRole(["admin"]), async (req, res
   }
 });
 
+// admin only: re-sends the welcome email to a user who hasn't set a password yet
+router.post("/:id/resend-invite", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    await userService.resendInvite(req.params.id);
+    res.json({ message: "Invite sent" });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    console.error("Resend invite error:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
 router.post("/", requireAuth, requireRole(["admin"]), async (req, res) => {
   try {
     const created = await userService.createUser(req.body);

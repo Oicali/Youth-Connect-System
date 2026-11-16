@@ -17,7 +17,7 @@ async function findById(userId) {
   const result = await pool.query(
     `SELECT u.user_id, u.username, u.email, u.first_name, u.last_name,
             u.middle_name, u.suffix, u.phone, u.alt_phone, u.gender,
-            u.birthdate, u.profile_picture, u.status, u.created_at,
+            u.profile_picture, u.status, u.created_at,
             r.role_name
      FROM users u
      JOIN roles r ON u.role_id = r.role_id
@@ -30,18 +30,19 @@ async function findById(userId) {
 async function updateProfile(userId, fields) {
   const {
     first_name, last_name, middle_name, suffix,
-    email, phone, alt_phone, gender, birthdate,
+    email, phone, alt_phone, gender,
   } = fields;
 
+  // birthdate removed: profile saves no longer touch it
   const result = await pool.query(
     `UPDATE users
      SET first_name = $1, last_name = $2, middle_name = $3, suffix = $4,
-         email = $5, phone = $6, alt_phone = $7, gender = $8, birthdate = $9,
+         email = $5, phone = $6, alt_phone = $7, gender = $8,
          updated_at = CURRENT_TIMESTAMP
-     WHERE user_id = $10
+     WHERE user_id = $9
      RETURNING user_id, username, email, first_name, last_name, middle_name,
-               suffix, phone, alt_phone, gender, birthdate, status, created_at`,
-    [first_name, last_name, middle_name, suffix, email, phone, alt_phone, gender, birthdate, userId]
+               suffix, phone, alt_phone, gender, status, created_at`,
+    [first_name, last_name, middle_name, suffix, email, phone, alt_phone, gender, userId]
   );
   return result.rows[0];
 }
@@ -56,7 +57,7 @@ async function findPasswordById(userId) {
 
 async function updatePassword(userId, newHash) {
   await pool.query(
-    "UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2",
+    "UPDATE users SET password = $1, password_set_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2",
     [newHash, userId]
   );
 }
@@ -90,7 +91,7 @@ async function findAll({ search, role, status, page = 1, limit = 10 } = {}) {
   const rowsResult = await pool.query(
     `SELECT u.user_id, u.username, u.email, u.first_name, u.last_name,
             u.middle_name, u.suffix, u.phone, u.alt_phone, u.gender,
-            u.birthdate, u.status, u.created_at, u.updated_at, r.role_name, r.role_id
+            u.status, u.password_set_at, u.created_at, u.updated_at, r.role_name, r.role_id
      FROM users u
      JOIN roles r ON u.role_id = r.role_id
      ${whereClause}
@@ -110,17 +111,17 @@ async function findAll({ search, role, status, page = 1, limit = 10 } = {}) {
 async function create(fields) {
   const {
     username, password, email, first_name, last_name,
-    middle_name, suffix, phone, alt_phone, gender, birthdate, role_id,
+    middle_name, suffix, phone, alt_phone, gender, role_id,
   } = fields;
 
   const result = await pool.query(
     `INSERT INTO users
       (username, password, email, first_name, last_name, middle_name, suffix,
-       phone, alt_phone, gender, birthdate, role_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       phone, alt_phone, gender, role_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING user_id, username, email, first_name, last_name, status, created_at`,
     [username, password, email, first_name, last_name, middle_name || null, suffix || null,
-     phone, alt_phone || null, gender, birthdate, role_id]
+     phone, alt_phone || null, gender, role_id]
   );
   return result.rows[0];
 }
@@ -128,17 +129,16 @@ async function create(fields) {
 async function updateById(userId, fields) {
   const {
     first_name, last_name, middle_name, suffix,
-    email, phone, alt_phone, gender, birthdate, role_id,
+    email, phone, alt_phone, gender, role_id,
   } = fields;
-
   const result = await pool.query(
     `UPDATE users
      SET first_name = $1, last_name = $2, middle_name = $3, suffix = $4,
-         email = $5, phone = $6, alt_phone = $7, gender = $8, birthdate = $9,
-         role_id = $10, updated_at = CURRENT_TIMESTAMP
-     WHERE user_id = $11
+         email = $5, phone = $6, alt_phone = $7, gender = $8,
+         role_id = $9, updated_at = CURRENT_TIMESTAMP
+     WHERE user_id = $10
      RETURNING user_id, username, email, first_name, last_name, status, created_at`,
-    [first_name, last_name, middle_name, suffix, email, phone, alt_phone, gender, birthdate, role_id, userId]
+    [first_name, last_name, middle_name, suffix, email, phone, alt_phone, gender, role_id, userId]
   );
   return result.rows[0];
 }
@@ -167,6 +167,16 @@ async function findPhoneConflict(phone, altPhone, excludeUserId = null) {
   return result.rows;
 }
 
+// minimal lookup for resending an invite
+async function findForInvite(userId) {
+  const result = await pool.query(
+    `SELECT user_id, username, email, first_name, status, password_set_at
+     FROM users WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
 // finds a user by email, ignoring letter case (used by forgot-password)
 async function findByEmail(email) {
   const result = await pool.query(
@@ -190,4 +200,5 @@ module.exports = {
   setStatus,
   create,
   findPhoneConflict,
+  findForInvite,
 };

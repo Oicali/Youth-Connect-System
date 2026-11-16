@@ -464,15 +464,18 @@ export function EditConnectMemberDialog({ member, open, onOpenChange, onSaved })
                         : "None"}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                  
+                  {/* thin visible scrollbar; overrides any global scrollbar-hiding */}
+<SelectContent showScrollArrows={false} alignItemWithTrigger={false} className="max-h-60 [scrollbar-width:thin] [scrollbar-color:var(--muted-foreground)_transparent]">
+                    <SelectItem value="" className="rounded-none border-b border-border/60">None</SelectItem>
                     {mentorsLoading && <SelectItem value="__loading" disabled>Loading...</SelectItem>}
                     {connectorId === originalConnectorId && originalConnectorId &&
                       !mentorOptions.some((m) => String(m.id) === originalConnectorId) && (
                         <SelectItem value={originalConnectorId}>{originalConnectorLabel} (current)</SelectItem>
                     )}
+                    {/* border-b = divider between mentors */}
                     {mentorOptions.map((mentorOpt) => (
-                      <SelectItem key={mentorOpt.id} value={String(mentorOpt.id)}>
+                      <SelectItem key={mentorOpt.id} value={String(mentorOpt.id)} className="rounded-none border-b border-border/60 last:border-b-0">
                         {mentorOpt.first_name} {mentorOpt.last_name}
                       </SelectItem>
                     ))}
