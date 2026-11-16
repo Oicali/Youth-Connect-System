@@ -5,7 +5,7 @@ const userRepository = require("../repositories/userRepository");
 const passwordResetRepository = require("../repositories/passwordResetRepository");
 const sessionRepository = require("../repositories/sessionRepository");
 const { sendEmail } = require("../utils/mailer");
-const { resetPasswordEmail } = require("../utils/emailTemplates");
+const { resetPasswordEmail } = require("../utils/emailForgotPassword");
 
 const TOKEN_TTL_MINUTES = 30; // how long a reset link stays valid
 const SALT_ROUNDS = 10; // must match what you use when creating users

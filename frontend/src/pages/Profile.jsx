@@ -27,14 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChangePasswordDialog } from "@/components/users/ChangePasswordDialog.jsx";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { format, parse } from "date-fns";
+
 
 const emptyValues = {
   first_name: "",
@@ -45,7 +38,6 @@ const emptyValues = {
   phone: "",
   alt_phone: "",
   gender: "",
-  birthdate: "",
 };
 
 // one label + one input placeholder, matches a form field's height
@@ -61,7 +53,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+
   const [account, setAccount] = useState(null);
   const [savedValues, setSavedValues] = useState(emptyValues);
   const { showError } = useErrorModal();
@@ -99,7 +91,6 @@ export default function Profile() {
       phone: authUser.phone || "",
       alt_phone: authUser.alt_phone || "",
       gender: authUser.gender || "",
-      birthdate: authUser.birthdate ? authUser.birthdate.split("T")[0] : "",
     };
     setSavedValues(values);
     reset(values);
@@ -180,14 +171,7 @@ export default function Profile() {
                 <FieldSkeleton />
                 <FieldSkeleton />
                 <FieldSkeleton />
-                <div className="flex gap-3">
-                  <div className="flex-3">
-                    <FieldSkeleton />
-                  </div>
-                  <div className="flex-1">
-                    <FieldSkeleton />
-                  </div>
-                </div>
+                <FieldSkeleton />
               </div>
             </div>
             <div>
@@ -398,122 +382,33 @@ export default function Profile() {
                     {...register("suffix")}
                   />
                 </div>
-                {/* gender + birthdate: "contents" on mobile so gender is half-width and birthdate is full-width; flex row from sm, 3:1 half-width cell on xl */}
-                <div className="contents sm:col-span-2 sm:flex sm:flex-row sm:gap-3 xl:col-span-1">
-                  <div className="space-y-1.5 sm:flex-1 xl:flex-3">
-                    <Label className="text-xs text-muted-foreground">
-                      Gender
-                    </Label>
-                    <Select
-                      value={watch("gender")}
-                      onValueChange={(v) => setValue("gender", v)}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger className="w-full capitalize">
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male" className="capitalize">
-                          Male
-                        </SelectItem>
-                        <SelectItem value="female" className="capitalize">
-                          Female
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.gender && (
-                      <p className="text-sm text-destructive">
-                        {errors.gender.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="col-span-2 space-y-1.5 sm:flex-1">
-                    <Label className="text-xs text-muted-foreground">
-                      Birthdate
-                    </Label>
-                    <Popover
-                      open={isEditing && datePopoverOpen}
-                      onOpenChange={(open) =>
-                        isEditing && setDatePopoverOpen(open)
-                      }
-                    >
-                      <PopoverTrigger asChild className="block w-full">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={!isEditing}
-                          className={`flex h-9 w-full flex-row-reverse items-center justify-between rounded-md border border-input bg-transparent px-3 font-normal shadow-xs hover:bg-transparent dark:bg-input/30 ${
-                            !isEditing ? "pointer-events-none opacity-50" : ""
-                          }`}
-                        >
-                          <CalendarIcon
-                            size={16}
-                            className="ml-2 shrink-0 text-muted-foreground"
-                          />
-                          <span className="truncate">
-                            {watch("birthdate")
-                              ? format(
-                                  parse(
-                                    watch("birthdate"),
-                                    "yyyy-MM-dd",
-                                    new Date(),
-                                  ),
-                                  "MMMM d, yyyy",
-                                )
-                              : "Select date"}
-                          </span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={
-                            watch("birthdate")
-                              ? parse(
-                                  watch("birthdate"),
-                                  "yyyy-MM-dd",
-                                  new Date(),
-                                )
-                              : undefined
-                          }
-                          onSelect={(date) => {
-                            if (date)
-                              setValue("birthdate", format(date, "yyyy-MM-dd"));
-                            setDatePopoverOpen(false);
-                          }}
-                          captionLayout="dropdown"
-                          fromYear={1950}
-                          toYear={new Date().getFullYear() - 16}
-                          disabled={{
-                            after: new Date(
-                              new Date().setFullYear(
-                                new Date().getFullYear() - 16,
-                              ),
-                            ),
-                          }}
-                          defaultMonth={
-                            watch("birthdate")
-                              ? parse(
-                                  watch("birthdate"),
-                                  "yyyy-MM-dd",
-                                  new Date(),
-                                )
-                              : new Date(
-                                  new Date().setFullYear(
-                                    new Date().getFullYear() - 16,
-                                  ),
-                                )
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    {errors.birthdate && (
-                      <p className="text-sm text-destructive">
-                        {errors.birthdate.message}
-                      </p>
-                    )}
-                  </div>
+                               {/* gender: plain grid cell now that birthdate is gone */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Gender
+                  </Label>
+                  <Select
+                    value={watch("gender")}
+                    onValueChange={(v) => setValue("gender", v)}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger className="w-full capitalize">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male" className="capitalize">
+                        Male
+                      </SelectItem>
+                      <SelectItem value="female" className="capitalize">
+                        Female
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.gender && (
+                    <p className="text-sm text-destructive">
+                      {errors.gender.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

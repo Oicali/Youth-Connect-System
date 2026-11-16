@@ -62,6 +62,7 @@ function SelectContent({
   align = "center",
   alignOffset = 0,
   alignItemWithTrigger = true,
+  showScrollArrows = true, // false hides the up/down arrows (use with a visible scrollbar)
   ...props
 }) {
   return (
@@ -81,9 +82,9 @@ function SelectContent({
             className
           )}
           {...props}>
-          <SelectScrollUpButton />
+          {showScrollArrows && <SelectScrollUpButton />}
           <SelectPrimitive.List>{children}</SelectPrimitive.List>
-          <SelectScrollDownButton />
+          {showScrollArrows && <SelectScrollDownButton />}
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
     </SelectPrimitive.Portal>

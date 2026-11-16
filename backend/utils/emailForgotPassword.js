@@ -1,4 +1,4 @@
-// backend/utils/emailTemplates.js
+// backend/utils/emailForgotPassword.js
 
 const APP_NAME = "Youth Connect System"; // shown in the header and footer
 

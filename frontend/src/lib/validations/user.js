@@ -19,7 +19,6 @@ const userBaseSchema = z.object({
     .optional()
     .or(z.literal("")),
   gender: z.string().min(1, "Gender is required"),
-  birthdate: z.string().min(1, "Birthdate is required"),
 });
 
 // Every schema built on the base needs this same check — factored out so it's

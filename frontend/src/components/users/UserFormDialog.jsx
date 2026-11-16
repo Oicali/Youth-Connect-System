@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { format, parse } from "date-fns";
-import { UserPlus, Pencil, Calendar as CalendarIcon } from "lucide-react";
+import { UserPlus, Pencil, Eye, EyeOff } from "lucide-react";
 
 import { addUserSchema, editUserSchema } from "@/lib/validations/user.js";
 import { createUser, updateUser } from "@/lib/api/users.js";
@@ -14,8 +13,7 @@ import { useLoadingModal } from "@/context/LoadingModalContext.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
-import { Calendar } from "@/components/ui/calendar.jsx";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.jsx";
+
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select.jsx";
@@ -26,18 +24,36 @@ import {
 const emptyDefaults = {
   username: "", password: "", confirmPassword: "",
   first_name: "", last_name: "", middle_name: "", suffix: "",
-  email: "", phone: "", alt_phone: "", gender: "", birthdate: "", role_id: "",
+  email: "", phone: "", alt_phone: "", gender: "", role_id: "",
 };
 
 // explicit trigger labels — Radix SelectValue won't resolve text for values set via reset()/setValue()
 const ROLE_LABELS = { "1": "Admin", "2": "Volunteer" };
 const GENDER_LABELS_FORM = { male: "Male", female: "Female" };
 
+// password input with its own show/hide toggle; register props pass straight through
+const PasswordInput = (props) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <Input type={visible ? "text" : "password"} className="pr-10" {...props} />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-primary"
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+};
+
 export function UserFormDialog({ user, open, onOpenChange, onSaved }) {
   const isEdit = !!user;
   const { showError } = useErrorModal();
 const { runWithLoading } = useLoadingModal();
-  const [birthOpen, setBirthOpen] = useState(false); // birthdate popover
+
 
   const {
     register, handleSubmit, reset, setValue, watch,
@@ -62,7 +78,6 @@ const { runWithLoading } = useLoadingModal();
         phone: user.phone || "",
         alt_phone: user.alt_phone || "",
         gender: user.gender || "",
-        birthdate: user.birthdate ? user.birthdate.split("T")[0] : "",
         role_id: String(user.role_id),
       });
     } else {
@@ -127,12 +142,12 @@ const { runWithLoading } = useLoadingModal();
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
-                  <Input type="password" {...register("password")} />
+                  <PasswordInput {...register("password")} />
                   {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Confirm password</Label>
-                  <Input type="password" {...register("confirmPassword")} />
+                  <PasswordInput {...register("confirmPassword")} />
                   {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
                 </div>
               </>
@@ -186,44 +201,7 @@ const { runWithLoading } = useLoadingModal();
               </Select>
               {errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}
             </div>
-            <div className="space-y-2">
-              <Label>Birthdate</Label>
-              {/* same picker as the member modals */}
-              <Popover open={birthOpen} onOpenChange={setBirthOpen}>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex h-9 w-full flex-row-reverse items-center justify-between rounded-md border border-input bg-transparent px-3 font-normal shadow-xs hover:bg-transparent dark:bg-input/30"
-                    />
-                  }
-                >
-                  <CalendarIcon size={16} className="ml-2 shrink-0 text-muted-foreground" />
-                  <span className="truncate">
-                    {watch("birthdate")
-                      ? format(parse(watch("birthdate"), "yyyy-MM-dd", new Date()), "MMMM d, yyyy")
-                      : "Select date"}
-                  </span>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={watch("birthdate") ? parse(watch("birthdate"), "yyyy-MM-dd", new Date()) : undefined}
-                    onSelect={(date) => {
-                      if (date) setValue("birthdate", format(date, "yyyy-MM-dd"), { shouldDirty: true, shouldValidate: true });
-                      setBirthOpen(false);
-                    }}
-                    captionLayout="dropdown"
-                    fromYear={1950}
-                    toYear={new Date().getFullYear()}
-                    disabled={{ after: new Date() }}
-                    defaultMonth={watch("birthdate") ? parse(watch("birthdate"), "yyyy-MM-dd", new Date()) : undefined}
-                  />
-                </PopoverContent>
-              </Popover>
-              {errors.birthdate && <p className="text-sm text-destructive">{errors.birthdate.message}</p>}
-            </div>
+
 
             {/* section: Contact */}
             <div className="mt-2 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground after:h-px after:flex-1 after:bg-border after:content-[''] sm:col-span-3">
